@@ -3,8 +3,20 @@
 
 ![intro](visuals/intro.png)
 
-Code coming soon!
+## Example Commands
 
-### Usage 
+*Evaluate AutoToM on a specific benchmark*:
+``
+$ python ProbSolver.py --automated --dataset_name "MMToM-QA"
+``
 
-### Files 
+Example of command line run with AutoToM with specified model input:
+``
+python ProbSolver.py --dataset_name ToMi-1st --assigned_model "['State', 'Observation', 'Belief']"
+``
+
+## Files 
+
+## Testing the model with customized questions
+
+Please check out the playground.ipynb
