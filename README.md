@@ -6,13 +6,15 @@
 ## Example Commands
 
 *Evaluate AutoToM on a specific benchmark*:
+
 ``
 $ python ProbSolver.py --automated --dataset_name "MMToM-QA"
 ``
 
-Example of command line run with AutoToM with specified model input:
+*Evaluate AutoToM with a specified model input*:
+
 ``
-python ProbSolver.py --dataset_name ToMi-1st --assigned_model "['State', 'Observation', 'Belief']"
+$ python ProbSolver.py --dataset_name ToMi-1st --assigned_model "['State', 'Observation', 'Belief']"
 ``
 
 ## Files 
