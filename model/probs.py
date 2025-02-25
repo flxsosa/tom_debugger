@@ -18,10 +18,11 @@ def return_letters(n):
     )  # Creates a list of uppercase letters ['A', 'B', 'C', ..., 'Z']
     return alphabet[:n]  # Returns the first n letters
 
+
 def get_likelihood(
     info,
     statement,
-    dataset_name, 
+    dataset_name,
     model="gpt-4o",
     verbose=False,
     world_rules=None,
@@ -40,6 +41,7 @@ def get_likelihood(
         action_exponent,
     )
     return likelihood
+
 
 def get_likelihood_general(
     info,
@@ -101,7 +103,7 @@ B) Unlikely."""
         print(prompt)
 
     elif "Action" in variable:
-        if "Belief of Goal" in info: # P(Action | Goal, Belief, Belief of Goal)
+        if "Belief of Goal" in info:  # P(Action | Goal, Belief, Belief of Goal)
             prompt = f"""Determine if {inf_agent}'s action is likely, respond with only either A or B.
 {info}
 {inf_agent}'s action: {statement}
@@ -113,7 +115,7 @@ If {inf_agent}'s goal, {inf_agent}'s belief of goal, and {inf_agent}'s action do
 Determine if {inf_agent}'s action is likely.
 A) Likely.
 B) Unlikely."""
-        else: # P(Action | Goal, Belief)
+        else:  # P(Action | Goal, Belief)
             prompt = f"""Determine if the statement is likely, respond with only either A or B. If it's not certain but it's possible, it's likely.
 {info}
 Here is a statement of {inf_agent}'s action. Think about {inf_agent}'s goal.
@@ -122,14 +124,14 @@ Determine if the following statement is likely: {statement}
 A) Likely.
 B) Unlikely."""
     elif "Belief" in variable:
-        if "Observation" in info: # P(Belief | Observation, Previous Belief)
+        if "Observation" in info:  # P(Belief | Observation, Previous Belief)
             prompt = f"""Determine if the statement is likely, respond with only either A or B.
 {info}
 Here is a statement of {inf_agent}'s current belief. If {inf_agent}'s current belief is not aligned with {inf_agent}'s observation, it is very unlikely.
 Determine if the following statement is likely: {statement}
 A) Likely.
 B) Unlikely."""
-        else: # P(Belief | State, Previous Belief)
+        else:  # P(Belief | State, Previous Belief)
             prompt = f"""Determine if the statement is likely, respond with only either A or B.
 {info}
 Here is a statement of {inf_agent}'s current belief. If {inf_agent}'s current belief is not aligned with the state, it is very unlikely.
@@ -221,9 +223,7 @@ B) Unlikely."""
 
 
 def llama_likelihood_request(prompt, max_tokens=200):
-    generated_text, cost_text = llama_request(prompt, max_tokens)
-    API_TOKEN = "" # Put your API token here
-    cache_directory = "/scratch/tshu2/cjin33"
+    API_TOKEN = ""  # Put your API token here
     model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
     pipeline = transformers.pipeline(
@@ -259,17 +259,11 @@ def llama_likelihood_request(prompt, max_tokens=200):
 
     if denominator <= 1e-12:
         prob_a_normalized = 0.5
-        prob_b_normalized = 0.5
     else:
         prob_a_normalized = prob_a_unnormalized / denominator
-        prob_b_normalized = prob_b_unnormalized / denominator
 
-    cost_likelihood = 0
     print("No cost: using GPU with opensource LLM")
     print(prompt, "\n", prob_a_normalized)
-    # print(prob_b_normalized)
-    # print("Likelihood", prob_a_normalized)
-
     return prob_a_normalized
 
 
@@ -316,15 +310,14 @@ def get_likelihood_test(prompt, verbose=True):
 
 if __name__ == "__main__":
     inf_agent = "'Eliza"
-  
-    a = get_likelihood_test( 
-    f"""Determine if the statement is likely, respond with only either A or B.
+
+    a = get_likelihood_test(
+        f"""Determine if the statement is likely, respond with only either A or B.
     Eliza's Previous Belief: Eliza believes that the personal experiences shared in the discussion revolved around the parenting styles their parents exhibited. She herself shared about her parents' blend of authoritative and permissive parenting styles, setting rules but also allowing her freedom to make her own decisions. Alaynas experience involved having a nurturing mother who guided her towards making the right choices, Titus had parents who adopted a traditional, authoritarian style with strict rules and high expectations, Joaquin was raised in an egalitarian style in a multicultural household where everyone had a say, and Jaden grew up with a democratic parenting style where decision making was a shared responsibility.
     Eliza's Observation: Eliza hears Alayna say she had a nurturing mother who guided her towards making the right choices, Titus say his parents adopted a traditional, authoritarian style with strict rules and high expectations, Joaquin say he was raised in an egalitarian style in a multicultural household where everyone had a say, and Jaden say he grew up with a democratic parenting style where decision making was a shared responsibility
     Here is a statement of {inf_agent}'s current belief. If {inf_agent}'s current belief is not aligned with {inf_agent}'s observation, it is very unlikely.
     Determine if {inf_agent}'s current belief is likely: Eliza believes that the personal experiences shared in the discussion revolved around the parenting styles their parents exhibited. She herself shared about her parents' blend of authoritative and permissive parenting styles, setting rules but also allowing her freedom to make her own decisions. Alaynas experience involved having a nurturing mother who guided her towards making the right choices, Titus had parents who adopted a traditional, authoritarian style with strict rules and high expectations, Joaquin was raised in an egalitarian style in a multicultural household where everyone had a say, and Jaden grew up with a democratic parenting style where decision making was a shared responsibility.
     A) Likely.
     B) Unlikely."""
-    
     )
     print(a)
