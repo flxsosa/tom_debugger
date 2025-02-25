@@ -264,7 +264,6 @@ def extraction(story, character, element_name, llm, dataset_name, choices=None):
                 resp = eval(resp)
 
                 if resp[1] not in additional_resp[1]:
-                    print("t")
                     additional_resp[1] = additional_resp[1] + " " + resp[1]
                 resp[1] = additional_resp[1]
                 return resp

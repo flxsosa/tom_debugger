@@ -35,10 +35,10 @@ class BayesianInferenceModel:
         verbose,
         inf_agent,
         model_name,
-        dataset_name, 
+        dataset_name,
         episode_name,
         answer_choices,
-        K, 
+        K,
         world_rules=None,
         all_prob_estimations={},
         no_observation_hypothesis="NONE",
@@ -202,7 +202,7 @@ class BayesianInferenceModel:
                 if "Action" in son and (
                     self.dataset_name == "BigToM_fatb"
                     or self.dataset_name == "BigToM_fafb"
-                ):  
+                ):
                     info = [info, (self.answer_choices)]
                     logits = get_likelihood(
                         info,
@@ -212,23 +212,22 @@ class BayesianInferenceModel:
                         verbose=self.verbose,
                         variable="Actions",
                         inf_agent=self.inf_agent,
-                    )                        
+                    )
                 if key in self.recorder:
                     logits = self.recorder[key]
                 else:
                     logits = get_likelihood(
                         info,
                         f"{var_dict[son]}",
-                        dataset_name = self.dataset_name, 
+                        dataset_name=self.dataset_name,
                         model=self.llm,
                         verbose=self.verbose,
                         variable=son,
                         inf_agent=self.inf_agent,
                     )
                     # print(logits)
-                
-            self.recorder[key] = logits
 
+            self.recorder[key] = logits
 
             node_results_tracker.append((son, parents, copy(var_dict), logits))
             individual_likelihoods[(son, tuple(parents), var_dict[son])] = logits
@@ -272,7 +271,7 @@ class BayesianInferenceModel:
             return all_node_results
         if "Action" not in self.variables:
             return all_node_results
-        
+
         if "Goal" in self.variables:
             if len(self.variables["Goal"].possible_values) > 1:
                 # goal is also not determined, then return
@@ -280,15 +279,17 @@ class BayesianInferenceModel:
             else:
                 # goal is determined, reduce belief hypotheses
                 with_goal = True
-        else:  
+        else:
             # goal not included in the model, reduce belief hypotheses
             with_goal = False
-            
+
         action_value = self.variables["Action"].possible_values[0]
         if "Utterance" in self.variables:
             utterance_value = self.variables["Utterance"].possible_values[0]
         else:
-            utterance_value = "NONE" # Utterance not in the model, likelihood will be minimum
+            utterance_value = (
+                "NONE"  # Utterance not in the model, likelihood will be minimum
+            )
         var_dict = {}
         var_dict["Action"] = action_value
         var_dict["Utterance"] = utterance_value
@@ -320,7 +321,7 @@ class BayesianInferenceModel:
         self.variables["Belief"].possible_values = new_hypos
         return all_node_results
 
-    def infer(self, infer_var_name, model_name, episode_name,init_belief=False):
+    def infer(self, infer_var_name, model_name, episode_name, init_belief=False):
         # enh_print("Init Belief" + str(init_belief), "red")
         if (
             "BigToM" in self.dataset_name and init_belief and "Belief" in self.variables
@@ -400,7 +401,7 @@ class BayesianInferenceModel:
                                 },
                                 probs[0],
                             ),
-                        ]
+                        ],
                     )
                 return (
                     probs,
@@ -424,10 +425,10 @@ class BayesianInferenceModel:
                             },
                             probs[1],
                         ),
-                    ]
+                    ],
                 )
         self.rewrite_graph()
-        
+
         left = []
         right = []
         for key, var in self.variables.items():
@@ -439,7 +440,10 @@ class BayesianInferenceModel:
             print(f'Estimating P({",".join(left)}|{",".join(right)})', end="")
 
         all_node_results = []
-        if "Belief" in self.variables and len(self.variables["Belief"].possible_values) == 1: # Belief only have one hypotheses -> certain belief -> model without observation, only do P(Action|Goal,Belief)
+        if (
+            "Belief" in self.variables
+            and len(self.variables["Belief"].possible_values) == 1
+        ):  # Belief only have one hypotheses -> certain belief -> model without observation, only do P(Action|Goal,Belief)
             print("Not considering Observation in the model")
             if "Observation" in self.parent_graph:
                 del self.parent_graph["Observation"]
@@ -450,8 +454,7 @@ class BayesianInferenceModel:
                 all_node_results += self.reduce_obs_hypospace()
             if "Belief" in left and infer_var_name != "Belief":
                 all_node_results += self.reduce_belief_hypospace()
-                
-            
+
         combo = self.recompute_combinations(left, infer_var_name)
 
         var_dict = {}
@@ -500,7 +503,7 @@ class BayesianInferenceModel:
                 logits, individual_likelihoods, node_result = (
                     self.calculate_prob_product(var_dict, calc)
                 )
-                
+
                 all_node_results.extend(node_result)
 
                 prob_contribution = logits * prior_prob
@@ -515,64 +518,3 @@ class BayesianInferenceModel:
             self.recorder,
             all_node_results,
         )
-
-
-if __name__ == "__main__":
-    variables = [
-        Variable(
-            name="State",
-            in_model=True,
-            is_observed=True,
-            possible_values=[
-                "Ava is in the garden.   Mia is in the playroom.   Amelia is in the garden.   The peach is in the envelope.   The envelope is in the garden."
-            ],
-            prior_probs=None,
-        ),
-        Variable(
-            name="Amelia's Observation",
-            in_model=True,
-            is_observed=False,
-            possible_values=[
-                "Amelia sees the peach in the bucket.",
-                "Amelia notices the bucket is empty.",
-                "Amelia sees the peach inside the envelope.",
-                "Amelia finds the envelope empty.",
-                "Amelia has no new observations compared to previous timestamp.",
-            ],
-            prior_probs=None,
-        ),
-        Variable(
-            name="Previous Belief",
-            in_model=True,
-            is_observed=False,
-            possible_values=[
-                "Amelia will look for the peach in the bucket.",
-                "Amelia will look for the peach in the envelope.",
-            ],
-            prior_probs=[0.87820563, 0.12179437],
-        ),
-        Variable(
-            name="Amelia's Belief",
-            in_model=True,
-            is_observed=False,
-            possible_values=[
-                "Amelia will look for the peach in the bucket.",
-                "Amelia will look for the peach in the envelope.",
-            ],
-            prior_probs=None,
-        ),
-    ]
-    times = {
-        "State": 7,
-        "Amelia's Observation": 7,
-        "Previous Belief": 6,
-        "Amelia's Belief": 7,
-    }
-    model = BayesianInferenceModel(
-        variables,
-        "The story takes place in a setting that includes a garden and a playroom. There is a peach, an envelope, and a bucket, all of which are located in the garden at different points. The characters involved are Ava, Mia, and Amelia.",
-        llm="gpt-4o",
-        times=times,
-        verbose=True,
-    )
-    model.infer("Belief")

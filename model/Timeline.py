@@ -346,21 +346,3 @@ def load_timeline_table(model_name, episode_name, reuse=False):
         for row in reader:
             dicts.append(dict(row))
     return dicts
-
-
-if __name__ == "__main__":
-    # print(load_timeline_table('debug'))
-    dataset_name = "ToMi"
-    data = load_dataset(dataset_name)
-    for i, d in enumerate(data):
-        story, question, choices, correct_answer = d
-        TimeLine(
-            story,
-            question,
-            choices,
-            variable_names=["State", "Belief", "Action", "Observation"],
-            episode_name=f"{dataset_name}_{i}",
-            llm="gpt-4o",
-        ).extract()
-        if i >= 1:
-            quit()
