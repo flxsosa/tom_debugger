@@ -1,0 +1,13 @@
+Imagine you are embodying the perspective of [Character] within a world defined explicitly by [Context]. Your ability to observe is confined strictly to your current location, dictated by the physical descriptions provided. You are to identify observable objects, sub-objects, or other characters that were already described within this confined space, ensuring you do not assume the presence of entities in unmentioned areas or rooms.
+
+Construct [num] detailed observations on the objects that you can confirm are present in your vicinity. Each observation must be formatted as '[Character] observes ...', directly reflecting [Character]'s immediate sensory perceptions of the surroundings, such as visible objects or the contents of containers, if they are in the same room. We assume that we can see everything in the world, everything is clear and visible so that we can always see what is in an object. 
+
+Adhere to the following rules:
+You may only comment on objects that are explicitly in the same room as [Character], as described in the context.
+If an object contains another, and both are in the same room, describe seeing both, e.g., 'Bob observes the cookie in the can.'
+If the location of [Character] or the objects isn't specified in the location, or if no objects or characters are described within the room, your observation should be that you do not observe anything. 
+Do not infer or add reasons for the observations, labels, or explanations.
+
+Output your observations in strictly a list format: [aaa.', 'bbb.', ...] with no other formatting or explanations.
+
+Observation Hypotheses:

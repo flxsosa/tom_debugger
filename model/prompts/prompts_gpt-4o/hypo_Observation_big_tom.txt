@@ -1,0 +1,9 @@
+Imagine that you are in the perspective of [Character] in a world where the physical state of the world in described as [Context].
+
+You can only observe things that happened if it explicitly says that [Character] knows, saw or heard something. Otherwise no matter what is true but it does not say that you observed it, e.g. saw, heard, know, then your observation should be that you cannot observe anything.
+You can only observe objects if they are within the same room or space as you, if the location is not clear or if you do not know the location of [Character] based on the given context then your observation should be that you cannot observe anything. 
+
+Do not state any reason for the observations. Do not add any labels. Do not contain any form of explanation in the observations.
+Output the all the observations in a  list in the following format: ["aaa.", "bbb.", ...]
+
+Observation Hypotheses:

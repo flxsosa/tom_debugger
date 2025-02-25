@@ -1,0 +1,330 @@
+from openai import OpenAI
+import json
+import math
+import string
+import numpy as np
+from utils import *
+import openai
+import os
+
+# openai.api_key = os.environ["OPENAI_API_KEY"]
+cost_of_estimating_likelihood = 0.0
+times_of_estimating = 0
+
+
+def return_letters(n):
+    alphabet = list(
+        string.ascii_uppercase
+    )  # Creates a list of uppercase letters ['A', 'B', 'C', ..., 'Z']
+    return alphabet[:n]  # Returns the first n letters
+
+def get_likelihood(
+    info,
+    statement,
+    dataset_name, 
+    model="gpt-4o",
+    verbose=False,
+    world_rules=None,
+    variable=None,
+    inf_agent=None,
+    action_exponent=None,
+):
+    likelihood = get_likelihood_general(
+        info,
+        statement,
+        model,
+        verbose,
+        world_rules,
+        variable,
+        inf_agent,
+        action_exponent,
+    )
+    return likelihood
+
+def get_likelihood_general(
+    info,
+    statement,
+    model="gpt-4o",
+    verbose=False,
+    world_rules=None,
+    variable=None,
+    inf_agent=None,
+    action_exponent=None,
+):
+
+    if "Observation" in variable:
+        prompt = f"""Determine if the statement is likely, respond with only either A or B.
+{info}
+Here is a statement of {inf_agent}'s current observation. Only evaluate current observation of {inf_agent} based on the state. Do not imagine anything else. Think about {inf_agent}'s location. {inf_agent} is quite likely to observe all objects and events in {inf_agent}'s location, and is unlikely to observe states in another location. If {inf_agent} does not appear in the state, {inf_agent} can't observe anything. Note that the statement has to be precise in wording to be likely. For example, treasure chest and container are different in wording and they're different objects.
+Determine if the following statement is likely: {statement}
+A) Likely.
+B) Unlikely."""
+    elif "Initial Belief" in variable:
+        prompt = f"""Determine if the statement is likely, respond with only either A or B. If it's not certain but it's possible, it's considered likely.
+    Here is a statement of the story and {inf_agent}' initial belief. 
+    
+    There is an action that causes the state of the main object to change. Based on {inf_agent}'s observations determine if {inf_agent} perceives the state of the object change. 
+    If it is not clearly stated that {inf_agent} perceives it then we do not assume that {inf_agent} perceived the change of state. 
+    If {inf_agent} perceives this change then it is highly likely that {inf_agent}'s belief aligns with the change of state of the object. 
+    If {inf_agent} does not perceive this change or if it is unknown if {inf_agent} perceives this change then it is highly likely that {inf_agent}'s belief does not align with the change of state of the object. 
+
+    
+    Story: {info}
+    Think about the state of the world and others actions. {inf_agent}' belief can change throughout time through other's actions and what {inf_agent} can observe. It is also important to think about if {inf_agent} can observe other's actions. If {inf_agent} can observe the same then their belief will change and if not then their belief will remain constant. Use this to determine {inf_agent}'s beliefs.
+    Determine if the following statement is likely: {statement}
+    A) Likely.
+    B) Unlikely."""
+    elif "Actions" in variable:
+        actions = info[1]
+        info = info[0]
+        action_a = actions[0]
+        action_b = actions[1]
+
+        if action_a in statement:
+            prompt = f"""Determine if the statement is likely, respond with only either A or B. If it's not certain but it's possible, it's likely.
+                {info}
+                If the next immediate actions possible are: {actions}
+                Determine which immediate action is most possible given the about {inf_agent}'s goal and belief.
+            
+                Determine if the following statement is likely: {action_a} is a better immediate action than {action_b}. 
+                A) Likely.
+                B) Unlikely."""
+        else:
+            prompt = f"""Determine if the statement is likely, respond with only either A or B. If it's not certain but it's possible, it's likely.
+                {info}
+                If the next immediate actions possible are: {actions}
+                Determine which immediate action is most possible given the about {inf_agent}'s goal and belief.
+            
+                Determine if the following statement is likely: {action_b} is a better immediate action than {action_a}. 
+                A) Likely.
+                B) Unlikely."""
+        print(prompt)
+
+    elif "Action" in variable:
+        if "Belief of Goal" in info: # P(Action | Goal, Belief, Belief of Goal)
+            prompt = f"""Determine if {inf_agent}'s action is likely, respond with only either A or B.
+{info}
+{inf_agent}'s action: {statement}
+When {inf_agent} wants to help, {inf_agent} is likely to bring an object to other's desired location, and unlikely to grab an object away from other's desired location.
+When {inf_agent} wants to hinder, {inf_agent} is likely to grab an object away from other's desired location, and unlikely to bring an object to other's desired location.
+When {inf_agent} doesn't know other's goal, {inf_agent} is likely to act according to {inf_agent}'s belief.
+If {inf_agent} wants to help and {inf_agent} believed the object is placed at other's desired location, it's unlikely {inf_agent} will move the object.
+If {inf_agent}'s goal, {inf_agent}'s belief of goal, and {inf_agent}'s action do not align in any way, the action is unlikely.
+Determine if {inf_agent}'s action is likely.
+A) Likely.
+B) Unlikely."""
+        else: # P(Action | Goal, Belief)
+            prompt = f"""Determine if the statement is likely, respond with only either A or B. If it's not certain but it's possible, it's likely.
+{info}
+Here is a statement of {inf_agent}'s action. Think about {inf_agent}'s goal.
+{inf_agent} will perform actions according to {inf_agent}'s belief, and any action that does not align with the belief is very unlikely, except when {inf_agent}'s goal is to hinder or to prevent others, and in this case (goal is hindering others) {inf_agent}'s action is only likely when it's different with {inf_agent}'s belief. If {inf_agent}'s mental states contains conditions like "When giving information" and the action is not giving information, it's unlikely.
+Determine if the following statement is likely: {statement}
+A) Likely.
+B) Unlikely."""
+    elif "Belief" in variable:
+        if "Observation" in info: # P(Belief | Observation, Previous Belief)
+            prompt = f"""Determine if the statement is likely, respond with only either A or B.
+{info}
+Here is a statement of {inf_agent}'s current belief. If {inf_agent}'s current belief is not aligned with {inf_agent}'s observation, it is very unlikely.
+Determine if the following statement is likely: {statement}
+A) Likely.
+B) Unlikely."""
+        else: # P(Belief | State, Previous Belief)
+            prompt = f"""Determine if the statement is likely, respond with only either A or B.
+{info}
+Here is a statement of {inf_agent}'s current belief. If {inf_agent}'s current belief is not aligned with the state, it is very unlikely.
+Determine if the following statement is likely: {statement}
+A) Likely.
+B) Unlikely."""
+    elif "Utterance" in variable:
+        prompt = f"""Determine if {inf_agent}'s utterance is likely, respond with only either A or B.
+{info}
+{inf_agent}'s utterance: {statement}
+When {inf_agent}'s goal is to help others, {inf_agent}'s utterance is likely when it strictly reflect {inf_agent}'s belief, and unlikely if it does not reflect {inf_agent}'s belief.
+When {inf_agent}'s goal is to hinder or to prevent others from achieving their goals, {inf_agent}'s utterance is likely when it's different from {inf_agent}'s belief, and unlikely if it reflects {inf_agent}'s belief.
+Determine if {inf_agent}'s utterance is likely.
+A) Likely.
+B) Unlikely."""
+    else:
+        prompt = f"""Determine if the statement is likely, respond with only either A or B.  If it's not certain but it's possible, it's considered likely. If it contradicts to the given information in some way, then it is unlikely. 
+{info}
+Determine if the following statement is likely: {statement}
+A) Likely.
+B) Unlikely."""
+    if "gpt" in model:
+        global cost_of_estimating_likelihood
+        global times_of_estimating
+        client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+        response = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": prompt},
+            ],
+            model=model,
+            logprobs=True,
+            top_p=0,
+            top_logprobs=5,
+            temperature=0.0,
+            seed=0,
+            max_tokens=1,
+        )
+        if model == "gpt-4":
+            inp, op = 30 / 1000000, 60 / 1000000
+        elif "gpt-4o" in model:
+            inp, op = 5 / 1000000, 15 / 1000000
+        elif model == "gpt-3.5-turbo":
+            inp, op = 0.5 / 1000000, 1.5 / 1000000
+
+        usage = response.usage
+        cost = usage.prompt_tokens * inp + usage.completion_tokens * op
+        cost_of_estimating_likelihood += cost
+        times_of_estimating += 1
+        if times_of_estimating % 10 == 0:
+            enh_print(
+                f"Accumulated Cost of Estimating Likelihood: {cost_of_estimating_likelihood} in {times_of_estimating} times",
+                "red",
+            )
+
+        response_json_str = response.model_dump_json(indent=2)
+        response_dict = json.loads(response_json_str)
+        logprob_a = None
+        if verbose:
+            print(response_dict["choices"][0]["logprobs"]["content"][0]["top_logprobs"])
+        for logprob in response_dict["choices"][0]["logprobs"]["content"][0][
+            "top_logprobs"
+        ]:
+            if str(logprob["bytes"]) == str([65]):
+                logprob_a = logprob["logprob"]
+                break
+        if logprob_a == None:
+            prob_a = None
+        else:
+            prob_a = math.exp(logprob_a)
+        if prob_a == None:
+            if verbose:
+                print(
+                    f"Encountering None values in prob_a!!\n\n{prompt}\n\n{response_dict}"
+                )
+            return 0.1
+        if prob_a < 0.03:
+            prob_a = 0.03
+        if prob_a > 0.97:
+            prob_a = 1.0
+        # clip the values
+        if action_exponent is not None and "Action" in variable:
+            return math.pow(prob_a, action_exponent)
+        if verbose:
+            print(prompt, "\n", prob_a)
+        return prob_a
+    else:
+        prob_a = llama_likelihood_request(prompt, max_tokens=200)
+        return prob_a
+
+
+def llama_likelihood_request(prompt, max_tokens=200):
+    generated_text, cost_text = llama_request(prompt, max_tokens)
+    API_TOKEN = "" # Put your API token here
+    cache_directory = "/scratch/tshu2/cjin33"
+    model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+
+    pipeline = transformers.pipeline(
+        "text-generation",
+        model=model_id,
+        model_kwargs={"torch_dtype": torch.bfloat16},
+        device_map="auto",
+        token=API_TOKEN,
+    )
+
+    model = pipeline.model
+    tokenizer = pipeline.tokenizer
+
+    def compute_prob_of_string(prompt_text, candidate_text):
+        prompt_ids = tokenizer.encode(prompt_text, add_special_tokens=False)
+        candidate_ids = tokenizer.encode(candidate_text, add_special_tokens=False)
+        running_prob = 1.0
+        curr_input_ids = torch.tensor([prompt_ids], dtype=torch.long).to(model.device)
+        with torch.no_grad():
+            for token_id in candidate_ids:
+                outputs = model(input_ids=curr_input_ids)
+                logits = outputs.logits[0, -1, :]
+                probs = torch.softmax(logits, dim=-1)
+                token_prob = probs[token_id].item()
+                running_prob *= token_prob
+                next_input = torch.tensor([[token_id]], device=model.device)
+                curr_input_ids = torch.cat([curr_input_ids, next_input], dim=1)
+        return running_prob
+
+    prob_a_unnormalized = compute_prob_of_string(prompt, "A) Likely.")
+    prob_b_unnormalized = compute_prob_of_string(prompt, "B) Unlikely.")
+    denominator = prob_a_unnormalized + prob_b_unnormalized
+
+    if denominator <= 1e-12:
+        prob_a_normalized = 0.5
+        prob_b_normalized = 0.5
+    else:
+        prob_a_normalized = prob_a_unnormalized / denominator
+        prob_b_normalized = prob_b_unnormalized / denominator
+
+    cost_likelihood = 0
+    print("No cost: using GPU with opensource LLM")
+    print(prompt, "\n", prob_a_normalized)
+    # print(prob_b_normalized)
+    # print("Likelihood", prob_a_normalized)
+
+    return prob_a_normalized
+
+
+def get_likelihood_test(prompt, verbose=True):
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    response = client.chat.completions.create(
+        messages=[
+            {"role": "system", "content": prompt},
+        ],
+        model="gpt-4o",
+        logprobs=True,
+        top_p=0,
+        top_logprobs=5,
+        temperature=0.0,
+        seed=0,
+        max_tokens=1,
+    )
+
+    response_json_str = response.model_dump_json(indent=2)
+    response_dict = json.loads(response_json_str)
+    logprob_a = None
+    if verbose:
+        print(response_dict["choices"][0]["logprobs"]["content"][0]["top_logprobs"])
+    for logprob in response_dict["choices"][0]["logprobs"]["content"][0][
+        "top_logprobs"
+    ]:
+        if str(logprob["bytes"]) == str([65]):
+            logprob_a = logprob["logprob"]
+            break
+    if logprob_a == None:
+        prob_a = None
+    else:
+        prob_a = math.exp(logprob_a)
+    if prob_a == None:
+        print(f"Encountering None values in prob_a!!\n\n{prompt}\n\n{response_dict}")
+        return 0.01
+    if prob_a < 0.01:
+        prob_a = 0.01
+    # clip the values
+    if verbose:
+        print(prompt, "\n", prob_a)
+    return prob_a
+
+
+if __name__ == "__main__":
+    inf_agent = "'Eliza"
+  
+    a = get_likelihood_test( 
+    f"""Determine if the statement is likely, respond with only either A or B.
+    Eliza's Previous Belief: Eliza believes that the personal experiences shared in the discussion revolved around the parenting styles their parents exhibited. She herself shared about her parents' blend of authoritative and permissive parenting styles, setting rules but also allowing her freedom to make her own decisions. Alaynas experience involved having a nurturing mother who guided her towards making the right choices, Titus had parents who adopted a traditional, authoritarian style with strict rules and high expectations, Joaquin was raised in an egalitarian style in a multicultural household where everyone had a say, and Jaden grew up with a democratic parenting style where decision making was a shared responsibility.
+    Eliza's Observation: Eliza hears Alayna say she had a nurturing mother who guided her towards making the right choices, Titus say his parents adopted a traditional, authoritarian style with strict rules and high expectations, Joaquin say he was raised in an egalitarian style in a multicultural household where everyone had a say, and Jaden say he grew up with a democratic parenting style where decision making was a shared responsibility
+    Here is a statement of {inf_agent}'s current belief. If {inf_agent}'s current belief is not aligned with {inf_agent}'s observation, it is very unlikely.
+    Determine if {inf_agent}'s current belief is likely: Eliza believes that the personal experiences shared in the discussion revolved around the parenting styles their parents exhibited. She herself shared about her parents' blend of authoritative and permissive parenting styles, setting rules but also allowing her freedom to make her own decisions. Alaynas experience involved having a nurturing mother who guided her towards making the right choices, Titus had parents who adopted a traditional, authoritarian style with strict rules and high expectations, Joaquin was raised in an egalitarian style in a multicultural household where everyone had a say, and Jaden grew up with a democratic parenting style where decision making was a shared responsibility.
+    A) Likely.
+    B) Unlikely."""
+    
+    )
+    print(a)
