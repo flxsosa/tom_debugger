@@ -3,19 +3,15 @@
 
 ![intro](visuals/intro.png)
 
-## Example Commands
+We propose AutoToM, an automated Bayesian Inverse Planning and Model Discovery for Open-ended Theory of Mind. 
 
-*Evaluate AutoToM on a specific benchmark*:
+To run AutoToM with a specified benchmark, with the default settings of reduced hypotheses and backwards inference: 
+## 
+    $ python ProbSolver.py --automated --dataset_name "MMToM-QA"
 
-``
-$ python ProbSolver.py --automated --dataset_name "MMToM-QA"
-``
-
-*Evaluate AutoToM with a specified model input*:
-
-``
-$ python ProbSolver.py --dataset_name ToMi-1st --assigned_model "['State', 'Observation', 'Belief']"
-``
+To run AutoToM with a specified model input: 
+##
+    $ python ProbSolver.py --dataset_name ToMi-1st --assigned_model "['State', 'Observation', 'Belief']"
 
 ## Files 
 
