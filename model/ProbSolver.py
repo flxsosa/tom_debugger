@@ -66,7 +66,7 @@ class ProblemSolver:
         recursion_depth=0,
         nested_timeline_before=None,
         nested_time_variables_before=None,
-        init_belief = False, 
+        init_belief=False,
     ):
         self.world_rules = (
             ""  # we do not use this value and keep it constant for all datasets
@@ -125,12 +125,21 @@ class ProblemSolver:
         self.initial_state = "NONE"
         self.memory = False
         self.realistic = False
-        self.ALL_VARIABLES = ["State", "Action", "Utterance", "Belief", "Goal", "Observation"] # all possbile variables for extraction
+        self.ALL_VARIABLES = [
+            "State",
+            "Action",
+            "Utterance",
+            "Belief",
+            "Goal",
+            "Observation",
+        ]  # all possbile variables for extraction
         self.init_belief = init_belief
 
         # import tracker and helper functions
         self.clear_current_nodes = NodeResultTracker.clear_current_nodes
-        self.translate_and_add_node_results = NodeResultTracker.translate_and_add_node_results
+        self.translate_and_add_node_results = (
+            NodeResultTracker.translate_and_add_node_results
+        )
         self.infer_last_timestamp = TimestepInference.infer_last_timestamp
         self.infer_belief_at_timestamp = TimestepInference.infer_belief_at_timestamp
         self.load_parsed_result_into_self = ProblemParser.load_parsed_result_into_self
@@ -144,7 +153,7 @@ class ProblemSolver:
         """
         Extract states and actions, other mental variables that might appear in the text, as well as solved nested states.
         Sets up and processes time variables for the problem solver.
-        
+
         Returns:
             tuple: Contains:
                 - time_variables: List of variables at each timestep
@@ -153,16 +162,18 @@ class ProblemSolver:
                 - all_timesteps: Total number of timesteps
         """
         context = ""
-        
+
         if self.model_name == "automated":
             var_types = self.ALL_VARIABLES
         else:
             var_types = self.assigned_model
-        
+
         # For belief of state questions for solving nested states, all episodes at same time step shares a timeline. We can load computed timeline (if computed before).
         if "nestedChunk" in self.episode_name:
             orig_episode_name = deepcopy(self.episode_name)
-            self.episode_name = '_'.join(self.episode_name.split('_')[:-1]) # leave the "state hypotheses" at this time step
+            self.episode_name = "_".join(
+                self.episode_name.split("_")[:-1]
+            )  # leave the "state hypotheses" at this time step
 
         timeline = TimeLine(
             self.story,
@@ -226,10 +237,12 @@ class ProblemSolver:
                     self.init_belief = False
 
         if "nestedChunk" in self.episode_name:
-            self.episode_name = orig_episode_name # restore episode name for different belief hypotheses
+            self.episode_name = orig_episode_name  # restore episode name for different belief hypotheses
 
         if self.nested:
-            self.relevant_entities = find_relevant_entities(self.choices, self.nested_agents_list, self.llm)
+            self.relevant_entities = find_relevant_entities(
+                self.choices, self.nested_agents_list, self.llm
+            )
             ground_truth_timeline = TimeLine(
                 self.orig_story,
                 self.question,
@@ -245,18 +258,26 @@ class ProblemSolver:
                 self.model_name, f"{self.episode_name}_ground_truth"
             )
             if ground_truth_variable_values_with_time == None:
-                ground_truth_variable_values_with_time, _ = ground_truth_timeline.extract()
+                ground_truth_variable_values_with_time, _ = (
+                    ground_truth_timeline.extract()
+                )
                 if self.verbose:
                     print(ground_truth_variable_values_with_time)
 
         reuse = False
-        if self.nested == True: # We can try to reuse previously solved time variables for other models
+        if (
+            self.nested == True
+        ):  # We can try to reuse previously solved time variables for other models
             reuse = True
 
-        if self.nested: # final variables used for inference is stored in _depth2
-            time_variables = load_time_variables(self.model_name, self.episode_name + '_depth2')
+        if self.nested:  # final variables used for inference is stored in _depth2
+            time_variables = load_time_variables(
+                self.model_name, self.episode_name + "_depth2"
+            )
         else:
-            time_variables = load_time_variables(self.model_name, self.episode_name, reuse=reuse)
+            time_variables = load_time_variables(
+                self.model_name, self.episode_name, reuse=reuse
+            )
 
         variable_types = []
         for var_name in self.assigned_model:
@@ -264,22 +285,43 @@ class ProblemSolver:
         variable_types.append(("", "All Actions"))
 
         if self.model_name == "automated":
-            # For automated model, we only need to extract states and actions. 
+            # For automated model, we only need to extract states and actions.
             # No need to propose hypotheses since we propose hypotheses at a later stage.
-            variable_types = [("", "State"), ("", "All Actions"), (self.inf_agent_name, "Action")]
+            variable_types = [
+                ("", "State"),
+                ("", "All Actions"),
+                (self.inf_agent_name, "Action"),
+            ]
 
         if time_variables == None:
-            time_variables = get_variables_with_time(variable_values_with_time, variable_types,
-                self.inf_agent_name, self.inf_var_name, context, self.choices,
-                self.K, self.llm, self.hypo_llm, self.world_rules, self.verbose,
-                self.hypo_method, self.dataset_name, self.full, self.initial_state,
-                self.prev_hyp, self.states, self.actions, self.question,
+            time_variables = get_variables_with_time(
+                variable_values_with_time,
+                variable_types,
+                self.inf_agent_name,
+                self.inf_var_name,
+                context,
+                self.choices,
+                self.K,
+                self.llm,
+                self.hypo_llm,
+                self.world_rules,
+                self.verbose,
+                self.hypo_method,
+                self.dataset_name,
+                self.full,
+                self.initial_state,
+                self.prev_hyp,
+                self.states,
+                self.actions,
+                self.question,
             )
 
             if self.nested:
                 # Logic: GT States -> Reconstructed but not solved States -> Solved belief of states
                 reconstructed_but_not_solved_time_variables = deepcopy(time_variables)
-                reconstructed_but_not_solved_variable_values_with_time = deepcopy(variable_values_with_time)
+                reconstructed_but_not_solved_variable_values_with_time = deepcopy(
+                    variable_values_with_time
+                )
                 self.episode_name += "_depth" + str(len(self.nested_agents_list))
                 ground_truth_time_variables = load_time_variables(
                     self.model_name, f"{self.episode_name}_gt"
@@ -304,12 +346,18 @@ class ProblemSolver:
                         self.initial_state,
                     )
                 save_time_variables(
-                    ground_truth_time_variables, self.model_name, f"{self.episode_name}_gt"
+                    ground_truth_time_variables,
+                    self.model_name,
+                    f"{self.episode_name}_gt",
                 )
                 save_time_variables(
-                    reconstructed_but_not_solved_time_variables, self.model_name, f"{self.episode_name}_reconstructed_but_not_solved"
+                    reconstructed_but_not_solved_time_variables,
+                    self.model_name,
+                    f"{self.episode_name}_reconstructed_but_not_solved",
                 )
-                solved_time_variables = load_time_variables(self.model_name, self.episode_name)
+                solved_time_variables = load_time_variables(
+                    self.model_name, self.episode_name
+                )
                 if solved_time_variables == None:
                     solved_time_variables = self.get_nested_states(
                         self,
@@ -321,7 +369,7 @@ class ProblemSolver:
                     save_time_variables(
                         solved_time_variables, self.model_name, self.episode_name
                     )
-                while len(self.nested_agents_list) > 1: 
+                while len(self.nested_agents_list) > 1:
                     self.nested_agents_list = self.nested_agents_list[1:]
                     if len(self.nested_agents_list) == 1:
                         time_variables = deepcopy(solved_time_variables)
@@ -331,53 +379,65 @@ class ProblemSolver:
                         self.story, self.first_agent_name, self.llm, self.dataset_name
                     )
                     self.story = " ".join(self.story)
-                    
-                    self.episode_name = self.episode_name[:-1] + str(len(self.nested_agents_list))
+
+                    self.episode_name = self.episode_name[:-1] + str(
+                        len(self.nested_agents_list)
+                    )
                     save_reconstructed_story(
                         vis, self.model_name, self.episode_name, self.first_agent_name
                     )
-                    reconstructed_but_not_solved_variable_values_with_time, _ = TimeLine(
-                        self.story,
-                        self.question,
-                        self.choices,
-                        self.assigned_model,
-                        self.model_name,
-                        self.episode_name,
-                        self.inf_var_name,
-                        self.llm,
-                        self.dataset_name,
-                    ).extract(inferred_agent=self.nested_agents_list[-1])
-                    solved_time_variables = load_time_variables(self.model_name, self.episode_name)
-                    if solved_time_variables is None:
-                        reconstructed_but_not_solved_time_variables = get_variables_with_time(
-                            reconstructed_but_not_solved_variable_values_with_time,
-                            variable_types,
-                            self.inf_agent_name,
-                            self.inf_var_name,
-                            context,
+                    reconstructed_but_not_solved_variable_values_with_time, _ = (
+                        TimeLine(
+                            self.story,
+                            self.question,
                             self.choices,
-                            self.K,
+                            self.assigned_model,
+                            self.model_name,
+                            self.episode_name,
+                            self.inf_var_name,
                             self.llm,
-                            self.hypo_llm,
-                            self.world_rules,
-                            self.verbose,
-                            self.hypo_method,
                             self.dataset_name,
-                            self.full,
-                            self.initial_state,
-                            self.prev_hyp,
+                        ).extract(inferred_agent=self.nested_agents_list[-1])
+                    )
+                    solved_time_variables = load_time_variables(
+                        self.model_name, self.episode_name
+                    )
+                    if solved_time_variables is None:
+                        reconstructed_but_not_solved_time_variables = (
+                            get_variables_with_time(
+                                reconstructed_but_not_solved_variable_values_with_time,
+                                variable_types,
+                                self.inf_agent_name,
+                                self.inf_var_name,
+                                context,
+                                self.choices,
+                                self.K,
+                                self.llm,
+                                self.hypo_llm,
+                                self.world_rules,
+                                self.verbose,
+                                self.hypo_method,
+                                self.dataset_name,
+                                self.full,
+                                self.initial_state,
+                                self.prev_hyp,
+                            )
                         )
                         solved_time_variables = self.get_nested_states(
                             self,
                             reconstructed_but_not_solved_time_variables,
                             ground_truth_time_variables,
                             reconstructed_but_not_solved_variable_values_with_time,
-                            ground_truth_variable_values_with_time
+                            ground_truth_variable_values_with_time,
                         )
-                        save_time_variables(solved_time_variables, self.model_name, self.episode_name)
-                    ground_truth_variable_values_with_time = deepcopy(reconstructed_but_not_solved_variable_values_with_time)
+                        save_time_variables(
+                            solved_time_variables, self.model_name, self.episode_name
+                        )
+                    ground_truth_variable_values_with_time = deepcopy(
+                        reconstructed_but_not_solved_variable_values_with_time
+                    )
                     ground_truth_time_variables = deepcopy(solved_time_variables)
-            
+
             save_time_variables(time_variables, self.model_name, self.episode_name)
 
         # Update timing and cost metrics
@@ -401,11 +461,23 @@ class ProblemSolver:
                     break
 
         all_timesteps = len(time_variables)
-        
-        return time_variables, variable_values_with_time, no_observation_hypothesis, all_timesteps
 
-    def solve_with_automated_model(self, time_variables, all_timesteps, no_observation_hypothesis, variable_values_with_time, all_probs):
-        
+        return (
+            time_variables,
+            variable_values_with_time,
+            no_observation_hypothesis,
+            all_timesteps,
+        )
+
+    def solve_with_automated_model(
+        self,
+        time_variables,
+        all_timesteps,
+        no_observation_hypothesis,
+        variable_values_with_time,
+        all_probs,
+    ):
+
         preproposed_ob_hypos = []
         last_state = "None"
 
@@ -419,12 +491,17 @@ class ProblemSolver:
 
         # print("time_variables", time_variables)
         # print("variable_values_with_time", variable_values_with_time)
-        contain_utterance = self.contains_utterance(self, time_variables, variable_values_with_time)
+        contain_utterance = self.contains_utterance(
+            self, time_variables, variable_values_with_time
+        )
         proposed_model = initial_model_proposal(
-            self.story + self.question, self.inf_var_name, self.nested, contain_utterance,
+            self.story + self.question,
+            self.inf_var_name,
+            self.nested,
+            contain_utterance,
         )
         assigned_models = {}
-        saved_model_variables = {} # with regard to timestep
+        saved_model_variables = {}  # with regard to timestep
 
         for start_timestep in range(all_timesteps - 1, -1, -1):
             print(f"Starting from timestep {start_timestep}")
@@ -442,23 +519,64 @@ class ProblemSolver:
             file_path = f"{output_folder}/automated_{self.episode_name}_back{int(self.back_inference)}_reduce{int(self.reduce_hypotheses)}.csv"
 
             assigned_models[start_timestep] = proposed_model
-            results, terminate, assigned_models, saved_model_variables = model_discovery(
-                start_timestep, all_timesteps, self.verbose, time_variables, previous_belief, 
-                self.inf_agent_name, self.inf_var_name, self.estimation_dictionary, 
-                self.infer_last_timestamp, no_observation_hypothesis, variable_values_with_time, 
-                all_probs, self.answerfunc, argmax, argmin, save_belief_probs, self.model_name, 
-                self.episode_name, self.infer_belief_at_timestamp, belief_name, get_variables_at_time, 
-                mmtom_get_variables_at_time, self.choices, self.K, self.llm, self.hypo_llm, 
-                self.hypo_method, self.full, preproposed_ob_hypos, last_state, inf_agent_action, 
-                assigned_models, file_path, self.clear_current_nodes, self.dataset_name, self.states, 
-                self.actions, self.question, precomputed_states, saved_model_variables, self.no_model_adjustment, self
+            results, terminate, assigned_models, saved_model_variables = (
+                model_discovery(
+                    start_timestep,
+                    all_timesteps,
+                    self.verbose,
+                    time_variables,
+                    previous_belief,
+                    self.inf_agent_name,
+                    self.inf_var_name,
+                    self.estimation_dictionary,
+                    self.infer_last_timestamp,
+                    no_observation_hypothesis,
+                    variable_values_with_time,
+                    all_probs,
+                    self.answerfunc,
+                    argmax,
+                    argmin,
+                    save_belief_probs,
+                    self.model_name,
+                    self.episode_name,
+                    self.infer_belief_at_timestamp,
+                    belief_name,
+                    get_variables_at_time,
+                    mmtom_get_variables_at_time,
+                    self.choices,
+                    self.K,
+                    self.llm,
+                    self.hypo_llm,
+                    self.hypo_method,
+                    self.full,
+                    preproposed_ob_hypos,
+                    last_state,
+                    inf_agent_action,
+                    assigned_models,
+                    file_path,
+                    self.clear_current_nodes,
+                    self.dataset_name,
+                    self.states,
+                    self.actions,
+                    self.question,
+                    precomputed_states,
+                    saved_model_variables,
+                    self.no_model_adjustment,
+                    self,
+                )
             )
             if terminate:
-                model_record = {"Initial model propose": proposed_model, "Assigned models": assigned_models}
+                model_record = {
+                    "Initial model propose": proposed_model,
+                    "Assigned models": assigned_models,
+                }
                 print(model_record)
                 return results, model_record
 
-        model_record = {"Initial model propose": proposed_model, "Assigned models": assigned_models}
+        model_record = {
+            "Initial model propose": proposed_model,
+            "Assigned models": assigned_models,
+        }
         print(model_record)
         return results, model_record
 
@@ -485,27 +603,36 @@ class ProblemSolver:
             self.load_parsed_result_into_self(self, parsed_result)
 
         if self.memory is True:
-            return get_answer_memory_questions(self.story, self.question, self.choices, self.llm)
+            return get_answer_memory_questions(
+                self.story, self.question, self.choices, self.llm
+            )
 
         ### Extract states, actions, and other assigned variables ###
-        time_variables, variable_values_with_time, no_observation_hypothesis, all_timesteps = self.information_extraction()
-        
+        (
+            time_variables,
+            variable_values_with_time,
+            no_observation_hypothesis,
+            all_timesteps,
+        ) = self.information_extraction()
+
         if self.realistic:
-            return get_answer_from_state(time_variables[-1]["State"].possible_values[0], self.choices, self.llm)
-        
+            return get_answer_from_state(
+                time_variables[-1]["State"].possible_values[0], self.choices, self.llm
+            )
+
         previous_belief = Variable("Previous Belief", True, False, ["None"], np.ones(1))
         all_probs = []
 
         self.estimation_dictionary = load_estimation_dict(self.dataset_name)
         results = None
-        
+
         if self.model_name == "automated":
             return self.solve_with_automated_model(
-                time_variables, 
-                all_timesteps, 
+                time_variables,
+                all_timesteps,
                 no_observation_hypothesis,
                 variable_values_with_time,
-                all_probs
+                all_probs,
             )
 
         else:
@@ -516,7 +643,10 @@ class ProblemSolver:
                 belief_name = f"{self.inf_agent_name}'s Belief"
 
                 # If we have actual hypotheses for previous belief, include them in the model, but with no prior
-                if start_timestep > 0 and belief_name in time_variables[start_timestep - 1]:
+                if (
+                    start_timestep > 0
+                    and belief_name in time_variables[start_timestep - 1]
+                ):
                     previous_belief = deepcopy(
                         time_variables[start_timestep - 1][belief_name]
                     )
@@ -534,17 +664,19 @@ class ProblemSolver:
                     inf_name = f"{self.inf_agent_name}'s {self.inf_var_name}"
 
                     if i == all_timesteps - 1:
-                        results, self.estimation_dictionary, all_probs = self.infer_last_timestamp(
-                            self,
-                            time_variables=time_variables,
-                            i=i,
-                            inf_name=inf_name,
-                            inf_var_name=self.inf_var_name,
-                            now_variables=now_variables,
-                            no_observation_hypothesis=no_observation_hypothesis,
-                            variable_values_with_time=variable_values_with_time,
-                            all_probs=all_probs,
-                            all_prob_estimations=self.estimation_dictionary,
+                        results, self.estimation_dictionary, all_probs = (
+                            self.infer_last_timestamp(
+                                self,
+                                time_variables=time_variables,
+                                i=i,
+                                inf_name=inf_name,
+                                inf_var_name=self.inf_var_name,
+                                now_variables=now_variables,
+                                no_observation_hypothesis=no_observation_hypothesis,
+                                variable_values_with_time=variable_values_with_time,
+                                all_probs=all_probs,
+                                all_prob_estimations=self.estimation_dictionary,
+                            )
                         )
 
                         # determine if we can stop inference
@@ -552,12 +684,15 @@ class ProblemSolver:
                         terminate = False
 
                         utility_terminate_threshold = -0.673
-                        utility = - entropy(results)
+                        utility = -entropy(results)
                         if len(results) == 2:
                             if utility > utility_terminate_threshold:
                                 terminate = True
                         else:
-                            if self.answerfunc == argmax and utility > utility_terminate_threshold:
+                            if (
+                                self.answerfunc == argmax
+                                and utility > utility_terminate_threshold
+                            ):
                                 terminate = True
                             elif self.answerfunc == argmin and min(results) < 0.2:
                                 terminate = True
@@ -569,19 +704,22 @@ class ProblemSolver:
                             return results, {}
 
                     else:
-                        previous_belief, self.estimation_dictionary, all_probs = self.infer_belief_at_timestamp(
-                            self,
-                            time_variables=time_variables,
-                            i=i,
-                            previous_belief=previous_belief,
-                            belief_name=belief_name,
-                            variable_values_with_time=variable_values_with_time,
-                            all_probs=all_probs,
-                            no_observation_hypothesis=no_observation_hypothesis,
-                            all_prob_estimations=self.estimation_dictionary,
+                        previous_belief, self.estimation_dictionary, all_probs = (
+                            self.infer_belief_at_timestamp(
+                                self,
+                                time_variables=time_variables,
+                                i=i,
+                                previous_belief=previous_belief,
+                                belief_name=belief_name,
+                                variable_values_with_time=variable_values_with_time,
+                                all_probs=all_probs,
+                                no_observation_hypothesis=no_observation_hypothesis,
+                                all_prob_estimations=self.estimation_dictionary,
+                            )
                         )
-        
+
         return results, {}
+
 
 def main(args):
     """
@@ -605,7 +743,7 @@ def main(args):
     K = args.K
     assigned_model = args.assigned_model
     automated = args.automated
-    no_model_adjustment = args.no_model_adjustment    # ablation study
+    no_model_adjustment = args.no_model_adjustment  # ablation study
     nested = args.nested
     # nested = False
     if automated:
@@ -626,8 +764,7 @@ def main(args):
 
     order = 0
     if "HiToM" in dataset_name:
-        order = int(dataset_name.split('order')[1])
-
+        order = int(dataset_name.split("order")[1])
 
     correct_answer_probs = []
     model_records = {}
@@ -639,7 +776,7 @@ def main(args):
     costs = []
     apis = []
     for i, d in enumerate(data):
-        if i > args.max_num:
+        if i >= args.max_num:
             break
         print(f"Question {i}")
         states, actions, video_id = None, None, None
@@ -684,7 +821,7 @@ def main(args):
             precomputed_actions=actions,
             prev_hyp=None,
             no_model_adjustment=no_model_adjustment,
-            recursion_depth=order
+            recursion_depth=order,
         )
 
         final_probs, model_record = solver.solve()
@@ -756,7 +893,7 @@ def main(args):
         else:
             correct.append(0)
             enh_print(f"Incorrect, now {cnt} / {i + 1}, {correct}", "red")
-    
+
     if automated:
         model_counts = {}
         for record in model_records.values():
@@ -786,9 +923,11 @@ if __name__ == "__main__":
             "ToMi-2nd",
             "ToMi-memory",
             "ToMi-reality",
-            "BigToM_fatb", "BigToM_fafb",
+            "BigToM_fatb",
+            "BigToM_fafb",
             "BigToM_fbtb",
-            "BigToM_fbfb", "BigToM_bbfb",
+            "BigToM_fbfb",
+            "BigToM_bbfb",
             "BigToM_bbfb",
             "MuMaToM_social_goal",
             "MuMaToM_belief",
@@ -811,15 +950,19 @@ if __name__ == "__main__":
         choices=[
             "gpt-4o",
         ],
-        default="gpt-4o"
+        default="gpt-4o",
     )
     parser.add_argument("--automated", action="store_true", help="Run automated model.")
     parser.add_argument(
-        "--back_inference", type=bool, default=True, 
+        "--back_inference",
+        type=bool,
+        default=True,
         help="Flag for running AutoToM with backwards inference.",
     )
     parser.add_argument(
-        "--reduce_hypotheses", type=bool, default=True, 
+        "--reduce_hypotheses",
+        type=bool,
+        default=True,
         help="Flag for running AutoToM with reduced hypotheses.",
     )
     parser.add_argument(
@@ -828,9 +971,7 @@ if __name__ == "__main__":
         help="Flag for verbose.",
     )
     parser.add_argument(
-        "--no_model_adjustment",
-        action="store_true",
-        help="Ablation studies"
+        "--no_model_adjustment", action="store_true", help="Ablation studies"
     )
     parser.add_argument("--K", type=int, default=1)
     parser.add_argument("--max_num", type=int, default=3)
@@ -838,9 +979,13 @@ if __name__ == "__main__":
         "--assigned_model",
         type=str,
         default='["State", "Observation", "Belief", "Action", "Goal"]',
-        help="When automated is false, you can assign a manually defined model here."
+        help="When automated is false, you can assign a manually defined model here.",
     )
-    parser.add_argument("--nested", default=None, help="If None, the model will figure out the order itself.")
+    parser.add_argument(
+        "--nested",
+        default=None,
+        help="If None, the model will figure out the order itself.",
+    )
     args = parser.parse_args()
     args.assigned_model = eval(args.assigned_model)
     print(args)

@@ -38,7 +38,9 @@ class TimeLine:
         else:
             self.agents = agents
         if inferred_agent is None:
-            self.inferred_agent = find_inferred_agent(self.question, self.choices, self.llm)
+            self.inferred_agent = find_inferred_agent(
+                self.question, self.choices, self.llm
+            )
         else:
             self.inferred_agent = inferred_agent
         # original wording
@@ -57,7 +59,7 @@ class TimeLine:
                 no_actions = True
             else:
                 no_actions = False
-        else: 
+        else:
             with open(
                 f"prompts/prompts_{self.llm}/find_inf_actions.txt",
                 "r",
@@ -96,7 +98,9 @@ class TimeLine:
                     ) as prompt_file:
                         prompt_template = prompt_file.read().strip()
                     prompt = prompt_template.replace("[Sentence]", f"{act}")
-                    prompt = prompt.replace("[Inferred_agent]", f"{self.inferred_agent}")
+                    prompt = prompt.replace(
+                        "[Inferred_agent]", f"{self.inferred_agent}"
+                    )
                     # print(prompt)
                     resp, cost = llm_request(prompt, temperature=0.0, model=self.llm)
                     # print(resp)
@@ -181,7 +185,11 @@ class TimeLine:
                 chunks_wording[-1] += " " + now_story
         elif "ToMi" in self.dataset_name:
             chunks_wording.append(now_story)
-        elif ("Action" not in self.variable_names) or (self.inf_var == "Action") or (self.model_name == "automated"):
+        elif (
+            ("Action" not in self.variable_names)
+            or (self.inf_var == "Action")
+            or (self.model_name == "automated")
+        ):
             # If not inferring action /model discovery, more timestep
             chunks_wording.append(now_story)
         else:
@@ -196,14 +204,8 @@ class TimeLine:
             print(chunks_wording)
             print()
         chunks = chunks_wording
-        if "BigToM" in self.dataset_name: 
-            chunks = [
-                x for x in chunks_wording if x != ""
-            ]  # remove any empty chunks in the timestamps
-        # 12/20: We don't want to remove empty chunks if we need to infer things that happen after a action
-        # For example, if the last action is "Andy entered the kitchen" and there's something in the kitchen that is crucial for inference
-        # If we add this empty chunk in the end, we will consider the action into the state, and Andy is now in the kitchen and having some observations in the kitchen and thus we can get the correct answer
-        # But if this empty chunk is removed, we will not consider the action since this is the last action, and there's no state for it to update, and it will cause errors in scenarios like this.
+        if "BigToM" in self.dataset_name:
+            chunks = [x for x in chunks_wording if x != ""]
         dicts = []
         if "Action" not in self.variable_names:
             self.variable_names.append("Action")
@@ -231,21 +233,21 @@ class TimeLine:
                         var_dict[f"{self.inferred_agent}'s {var_name}"] = resp
                         if var_name == "Goal" and resp != "NONE":
                             known_goal = resp
-                else: # Action extraction
+                else:  # Action extraction
                     for agent in self.agents:
                         resp = extraction(
                             chunk, agent, var_name, self.llm, self.dataset_name
                         )
                         var_dict[f"{agent}'s {var_name}"] = parse_extraction(resp)
             dicts.append(var_dict)
-            
+
         for d in dicts:
             all_actions = []
             for key, val in d.items():
                 if "Action" in key and val != "NONE":
                     all_actions.append(val)
             d["All Actions"] = all_actions if all_actions != [] else "NONE"
-        
+
         if known_goal != "NONE":
             for i, r in enumerate(dicts):
                 var_name = f"{self.inferred_agent}'s Goal"
@@ -257,7 +259,7 @@ class TimeLine:
         if "BigToM" not in self.dataset_name:
             no_actions = False
         return dicts, no_actions
-    
+
     def supply_extraction(self, dicts, verbose=False):
         # Supply variable extraction for automated model (the original dicts is from other models)
         self.inferred_agent = find_inferred_agent(self.question, self.choices, self.llm)
@@ -270,10 +272,10 @@ class TimeLine:
                 elif var_name not in ["Action"]:
                     if var_name == "State":
                         continue
-                    
+
                     if f"{self.inferred_agent}'s {var_name}" in var_dict:
                         continue
-                    
+
                     resp = extraction(
                         chunk,
                         self.inferred_agent,
@@ -295,7 +297,7 @@ class TimeLine:
         self.save_timeline_table(dicts)
         print(len(dicts))
         print(dicts[0])
-        if "BigToM" in self.dataset_name: 
+        if "BigToM" in self.dataset_name:
             if (len(dicts) == 1) and f"{self.inferred_agent}'s Action" not in dicts[0]:
                 new_dicts = deepcopy(dicts)
                 for k in dicts[0].keys():
@@ -303,15 +305,16 @@ class TimeLine:
                         new_dicts[0][f"{self.inferred_agent}'s Action"] = dicts[0][k]
                 dicts = new_dicts
 
-            if len(dicts) == 1 and dicts[0][f"{self.inferred_agent}'s Action"] == "NONE":
+            if (
+                len(dicts) == 1
+                and dicts[0][f"{self.inferred_agent}'s Action"] == "NONE"
+            ):
                 no_actions = True
             else:
                 no_actions = False
         else:
-            no_actions = False 
+            no_actions = False
         return dicts, no_actions
-
-
 
     def save_timeline_table(self, dicts):
         output_folder = "../results/middle"
@@ -330,7 +333,9 @@ def load_timeline_table(model_name, episode_name, reuse=False):
 
     if not os.path.isfile(file_name):
         if reuse is True:
-            file_name = get_filename_with_episode_name(episode_name=episode_name, base_path="../results/middle/")
+            file_name = get_filename_with_episode_name(
+                episode_name=episode_name, base_path="../results/middle/"
+            )
             if file_name is None:
                 return None
         else:

@@ -150,17 +150,14 @@ def llm_request(
             hypo=hypo,
             verbose=verbose,
         )
-    elif "llama" in model:
-        return llama_request(prompt, max_tokens=200)
+    elif "Llama-3.1-8B" in model:
+        return llama_request(prompt, model, max_tokens=200)
 
 
-def llama_request(prompt, max_tokens=200):
+def llama_request(
+    prompt, model_id="meta-llama/Meta-Llama-3.1-8B-Instruct", max_tokens=200
+):
     API_TOKEN = os.environ["LLAMA_API_KEY"]
-    cache_directory = "/scratch/tshu2/cjin33"
-    model_name = "meta-llama/Llama-3.1-8B-Instruct"
-
-    model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-
     if torch.cuda.is_available():
         device = 0  # Assuming you want to use the first GPU
         print("GPU Available: Using GPU")
@@ -172,7 +169,7 @@ def llama_request(prompt, max_tokens=200):
         "text-generation",
         model=model_id,
         model_kwargs={"torch_dtype": torch.bfloat16},
-        device_map=device,  # "auto",
+        device_map=device,
         token=API_TOKEN,
     )
 
@@ -187,13 +184,7 @@ def llama_request(prompt, max_tokens=200):
     )
     generated_text = outputs[0]["generated_text"][-1]["content"]
     generated_text = generated_text.replace("\n", " ")
-
-    print(f"Prompt: {prompt}\n\n")
-    print(f"LLaMA answer length: {len(generated_text)}")
-    print(f"LLaMA answer: {generated_text}")
-
     cost = 0
-
     return generated_text, cost
 
 
@@ -273,10 +264,6 @@ def gpt_request(
                     f"Accumulated Cost of Extracting Information: {cost_of_information_extracting} in {times_of_information_extracting} times",
                     "red",
                 )
-        # if verbose:
-        # enh_print(prompt)
-        # enh_print(response.choices[0].message.content.strip(), color="red")
-        # getting the liklihood
         if logprobs:
             response_json_str = response.model_dump_json(indent=2)
             response_dict = json.loads(response_json_str)
@@ -399,6 +386,7 @@ Question: {question}
         time.sleep(20)
         return get_logits(info, question, choices, model)
 
+
 def contains_utterance(self, data_list_1, data_list_2):
     if data_list_2 == None:
         return False
@@ -408,16 +396,18 @@ def contains_utterance(self, data_list_1, data_list_2):
                 return True
     return False
 
+
 def check_nested(self):
     # Safety check. If not satisfied, it is classified as incorrect.
-    nested_dataset = ("2nd" in self.dataset_name)
+    nested_dataset = "2nd" in self.dataset_name
     if "HiToM" in self.dataset_name:
-        order = int(self.dataset_name.split('order')[1])
+        order = int(self.dataset_name.split("order")[1])
         if order > 1:
             nested_dataset = True
     if self.nested == True and not nested_dataset:
         return False
     return True
+
 
 def letter_to_number_mapping(letter):
     return ord(letter.upper()) - ord("A")
@@ -455,10 +445,11 @@ def rephrase_choices(question, choices, llm, wording=False):
     prompt = prompt.replace("[Choices]", f"Choices: {choices}")
     resp, cost = llm_request(prompt, temperature=0.0, model=llm)
     resp = resp.replace("'s", "s")
-    
+
     resp = resp.strip()
     try:
         from ast import literal_eval
+
         return literal_eval(resp)
     except (ValueError, SyntaxError) as e:
         # If direct eval fails, try cleaning the string
@@ -486,21 +477,22 @@ def find_inference_timestep(story, choices, llm):
     # quit()
     return story
 
+
 def find_relevant_entities(choices, agents, llm):
     with open(
         f"prompts/prompts_{llm}/find_relevant_entities.txt", "r", encoding="utf-8"
     ) as prompt_file:
         prompt_template = prompt_file.read().strip()
-    
+
     entities = set()
     for c in choices:
         prompt = prompt_template.replace("[Choice]", f"{c}")
         resp, cost = llm_request(prompt, temperature=0.0, model=llm)
         resp_entities = get_list_from_str(resp)
-        entities.update(resp_entities) 
+        entities.update(resp_entities)
     entities.update(agents)
     # print(prompt, '\n', entities)
-    print('entities extracted: ', entities)
+    print("entities extracted: ", entities)
     return list(entities)
 
 
@@ -521,15 +513,17 @@ def rewrite_belief_info(info, init_states, llm):
     # quit()
     return resp
 
+
 def find_nested_agent_list(question, choices, llm):
     # Just to get GT. Replace this with LLM-based extraction later.
-    first_agent = question.split('think')[0].split('does')[1].strip()
-    other_agents = 'think'.join(question.split('think')[1:]).split('thinks')[:-1]
+    first_agent = question.split("think")[0].split("does")[1].strip()
+    other_agents = "think".join(question.split("think")[1:]).split("thinks")[:-1]
     oa = []
     for a in other_agents:
         oa.append(a.strip())
-        
+
     return [first_agent] + oa
+
 
 def reconstruct_story_nested(story, agent, llm, dataset_name):
     parsed_story = story.split(".")
@@ -544,11 +538,9 @@ def reconstruct_story_nested(story, agent, llm, dataset_name):
         if rephrase_story_nested_single(story, agent, sentence, llm, dataset_name):
             ret.append(sentence)
             rec = sentence
-        vis.append({
-            "Original story": sentence,
-            "Reconstructed story": rec
-        })
+        vis.append({"Original story": sentence, "Reconstructed story": rec})
     return ret, vis
+
 
 def rephrase_story_nested_single(story, agent, sentence, llm, dataset_name):
     with open(
@@ -559,7 +551,9 @@ def rephrase_story_nested_single(story, agent, sentence, llm, dataset_name):
     prompt = prompt.replace("[Agent]", agent)
     prompt = prompt.replace("[Sentence]", f"{sentence}")
     if "HiToM" in dataset_name:
-        if "enter" in sentence or "exit" in sentence: # To represent initial state in HiToM, and HiToM assume the order of agents leaving is known
+        if (
+            "enter" in sentence or "exit" in sentence
+        ):  # To represent initial state in HiToM, and HiToM assume the order of agents leaving is known
             return True
     resp, cost = llm_request(prompt, temperature=0.0, model=llm)
     if resp[0] == "A":
@@ -574,13 +568,15 @@ def rephrase_question_nested(question, agent, llm, dataset_name):
     # This function gives ground truth rephrased question in ToMi-2nd and Hi-ToM.
     # For more open-ended scenarios, replace this function with LLMs.
     if "thinks" in question:
-        obj_q = question.split('thinks')[-1]
+        obj_q = question.split("thinks")[-1]
     else:
-        obj_q = ' the ' + question.split('the ')[-1] + 'is?'
+        obj_q = " the " + question.split("the ")[-1] + "is?"
     return f"Where does {agent} think{obj_q}"
+
 
 def mmtom_modality_fusion(video_info, text_variables, agent_name):
     pass
+
 
 def story_fusion(video_story, text_story, llm):
     with open(
@@ -592,20 +588,24 @@ def story_fusion(video_story, text_story, llm):
     resp, cost = llm_request(prompt, temperature=0.0, model=llm)
     resp = resp.split("\n")[0]
     resp = resp.replace('"', "'")
-    if 'A' in resp:
-        return text_story + ' ' + video_story
+    if "A" in resp:
+        return text_story + " " + video_story
     else:
         return text_story
 
+
 def correct_visual_actions(action, choices, llm):
-# visual action might have errors. Fuse text to correct it
-    with open(f'prompts/prompts_{llm}/correct_visual_info.txt', 'r', encoding="utf-8") as prompt_file:
+    # visual action might have errors. Fuse text to correct it
+    with open(
+        f"prompts/prompts_{llm}/correct_visual_info.txt", "r", encoding="utf-8"
+    ) as prompt_file:
         prompt_template = prompt_file.read().strip()
     prompt = prompt_template.replace("[Action]", f"Action: {action}")
     prompt = prompt.replace("[Info]", f"Information: {choices}")
     resp, cost = llm_request(prompt, temperature=0.0, hypo=True, model=llm)
     # print(prompt, resp)
     return resp
+
 
 def get_rid_of_number_starts(story):
     # Getting rid of number starts, and underscores to obtain a more natural story illustration
@@ -621,26 +621,31 @@ def create_folder_if_not_there(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
+
 def get_model_name(model):
     model_name = ""
     for var in model:
         model_name += var[0].lower()
     return model_name
 
-def get_filename_with_episode_name(episode_name, base_path="../results/middle", suffix="csv"):
+
+def get_filename_with_episode_name(
+    episode_name, base_path="../results/middle", suffix="csv"
+):
 
     pattern = os.path.join(base_path, f"*_{episode_name}.{suffix}")
-    
+
     matching_files = glob.glob(pattern)
-    
+
     if not matching_files:
         print(f"No files found matching episode_name: {episode_name}, {base_path}")
         return None
-    
+
     file_path = matching_files[0]
     print(f"Reading file: {file_path}")
-    
+
     return file_path
+
 
 def find_agents(story, llm):
     with open(
@@ -673,12 +678,12 @@ def get_list_from_str(resp):
     except SyntaxError:
         # Manual parsing for malformed list strings
         def parse_list_string(s):
-            s = s.strip('[]')  # Remove outer brackets
+            s = s.strip("[]")  # Remove outer brackets
             items = []
-            current_item = ''
+            current_item = ""
             in_quotes = False
             quote_char = None
-            
+
             for char in s:
                 if char in ['"', "'"]:
                     if not in_quotes:
@@ -686,15 +691,15 @@ def get_list_from_str(resp):
                         quote_char = char
                     elif char == quote_char:
                         in_quotes = False
-                elif char == ',' and not in_quotes:
-                    items.append(current_item.strip().strip('"\''))
-                    current_item = ''
+                elif char == "," and not in_quotes:
+                    items.append(current_item.strip().strip("\"'"))
+                    current_item = ""
                     continue
                 current_item += char
-            
+
             if current_item:
-                items.append(current_item.strip().strip('"\''))
-            
+                items.append(current_item.strip().strip("\"'"))
+
             return [item for item in items if item]
 
         resp_list = parse_list_string(resp)

@@ -41,6 +41,7 @@ Agents should have name. Formulate your response in a single line. Actions conta
     # print(story)
     quit()
 
+
 def guided_state_filter(state, information, llm, relevant_entities=None):
     if relevant_entities is not None:
         flag = False
@@ -71,14 +72,14 @@ def generate_hypo_belief_of_state(s, c, llm):
     c_new = deepcopy(c)
     # print(c_new)
     for i in range(len(c)):
-        c_new[i] = c[i].split('the ')[-1].replace('.', '')
+        c_new[i] = c[i].split("the ")[-1].replace(".", "")
     prompt = prompt_template.replace("[Information]", f"Information: {c_new}")
-    prompt = prompt.replace("[Given Sentence]", f'{s}')
+    prompt = prompt.replace("[Given Sentence]", f"{s}")
     resp, cost = llm_request(prompt, temperature=0.0, hypo=True, model=llm)
     print(prompt)
     # print('before handling', resp)
     resp_list = get_list_from_str(resp)
-    print('after converting', resp_list)
+    print("after converting", resp_list)
     return resp_list
 
 
@@ -158,7 +159,16 @@ def repetitive_hypothesis_reduction(hypo_c, llm):
 
 
 def hypothesis_generation(
-    wrong_hyp, info, story, character, element_name, K, llm, verbose=False, prev_hyp="", dataset_name=""
+    wrong_hyp,
+    info,
+    story,
+    character,
+    element_name,
+    K,
+    llm,
+    verbose=False,
+    prev_hyp="",
+    dataset_name="",
 ):
     if element_name == "Belief" and "BigToM" in dataset_name:
         with open(
@@ -186,7 +196,7 @@ def hypothesis_generation(
         prompt = prompt.replace("Hypotheses", "Hypothesis")
         prompt = prompt.replace("align", "aligns")
         prompt = prompt.replace('["aaa.", "bbb.", ...]', '["aaa."]')
-        
+
     resp, cost = llm_request(prompt, temperature=0.0, hypo=True, model=llm)
 
     if "\n" in resp:
@@ -200,59 +210,6 @@ def hypothesis_generation(
         resp = resp.split("]")[0]
         resp = f'["{resp}"]'
 
-    resp_list = eval(resp)
-    for j, resp in enumerate(resp_list):
-        for i in range(K):
-            resp = resp.replace(f"Hypothesis_{i+1}: ", "")
-        resp_list[j] = resp
-    # print(resp_list)
-    # print(res)
-    if verbose:
-        enh_print(f"Hypotheses proposed for {element_name}\n{resp_list}")
-    return resp_list
-
-
-def hypothesis_generation_FANToM(
-    wrong_hyp, info, story, character, element_name, K, llm, verbose=False, prev_hyp=""
-):
-    with open(
-        f"prompts/prompts_{llm}/hypo_{element_name}_FANToM.txt",
-        "r",
-        encoding="utf-8",
-    ) as prompt_file:
-        prompt_template = prompt_file.read().strip()
-
-    prompt = prompt_template.replace("[Context]", f"Story: {story}")
-    prompt = prompt.replace("[Character]", f"{character}")
-    prompt = prompt.replace("[Wrong Hypotheses]", f"{wrong_hyp}")
-    prompt = prompt.replace("[Information]", f"{info}")
-    if K != 1:
-        prompt = prompt.replace("[num]", f"{K}")
-    else:
-        prompt = prompt.replace("[num]", f"one")
-        prompt = prompt.replace("hypotheses", "hypothesis")
-        prompt = prompt.replace("Hypotheses", "Hypothesis")
-        prompt = prompt.replace("align", "aligns")
-        prompt = prompt.replace('["aaa.", "bbb.", ...]', '["aaa."]')
-    # print(resp)
-
-    if element_name == "Goal":
-        print(prompt)
-    resp, cost = llm_request(prompt, temperature=0.0, hypo=True, model=llm)
-    # enh_print(prompt, resp)
-
-    if "\n" in resp:
-        resp = resp.split("\n")[-1]
-    if resp[0] != "[" and "[" in resp:
-        resp = "[" + resp.split("[")[1]
-    elif resp[-1] != "]" and "]" in resp:
-        resp = resp.split("]")[0] + "]"
-    if '"' not in resp:
-        resp = resp.split("[")[1]
-        resp = resp.split("]")[0]
-        resp = f'["{resp}"]'
-
-    # resp = resp.replace("'", "").replace('"', "")
     resp_list = eval(resp)
     for j, resp in enumerate(resp_list):
         for i in range(K):
@@ -266,14 +223,7 @@ def hypothesis_generation_FANToM(
 
 
 def extraction(story, character, element_name, llm, dataset_name, choices=None):
-    if "FANToM" in dataset_name:
-        with open(
-            f"prompts/prompts_{llm}/find_{element_name}_FANToM.txt",
-            "r",
-            encoding="utf-8",
-        ) as prompt_file:
-            prompt_template = prompt_file.read().strip()
-    elif "BigToM" in dataset_name and element_name in [
+    if "BigToM" in dataset_name and element_name in [
         "Observation",
         "State",
         "Action",
@@ -341,7 +291,11 @@ def extraction(story, character, element_name, llm, dataset_name, choices=None):
         ) and resp == ["A", ""]:
             resp = ["B", ""]
             return resp
-        if "BigToM" in dataset_name and element_name not in ["State"] and resp != ["B", ""]:
+        if (
+            "BigToM" in dataset_name
+            and element_name not in ["State"]
+            and resp != ["B", ""]
+        ):
             check_var = verify_variable(element_name, resp)
         else:
             check_var = "A"
@@ -365,7 +319,9 @@ def get_context(story, llm):
     return resp
 
 
-def get_initial_state(story, llm): # Note: This is for MuMAToM modality fusion, using the original LIMP prompt
+def get_initial_state(
+    story, llm
+):  # Note: This is for MuMAToM modality fusion, using the original LIMP prompt
     with open(
         f"prompts/prompts_{llm}/find_initial_states.txt", "r", encoding="utf-8"
     ) as prompt_file:
@@ -376,6 +332,7 @@ def get_initial_state(story, llm): # Note: This is for MuMAToM modality fusion, 
     # print(resp)
     # quit()
     return resp
+
 
 def get_initial_state_tomi(story, llm):
     with open(
@@ -388,6 +345,7 @@ def get_initial_state_tomi(story, llm):
     # print(resp)
     # quit()
     return resp
+
 
 def verify_variable(infer_variable, sentence):
     with open(
@@ -428,7 +386,7 @@ def get_inf_var(question, choices, model, llm, dataset_name):
 
 
 def get_info_from_question(question, llm, dataset_name):
-    
+
     with open(
         f"prompts/prompts_{llm}/get_info_from_question.txt", "r", encoding="utf-8"
     ) as prompt_file:
@@ -439,6 +397,7 @@ def get_info_from_question(question, llm, dataset_name):
     resp = resp.replace("NONE", "")
     # print(resp)
     return resp
+
 
 def get_actions_without_inf_agent(vals, inf_agent_name, full):
     if isinstance(vals["All Actions"], str):
@@ -456,7 +415,9 @@ def get_actions_without_inf_agent(vals, inf_agent_name, full):
     if inf_agent_action in all_actions:
         all_actions.remove(inf_agent_action)
 
-    elif not full:  # We don't want the last action to weigh in here -- used in solving nested belief of states
+    elif (
+        not full
+    ):  # We don't want the last action to weigh in here -- used in solving nested belief of states
         now_chunk = vals["Chunk"]
         last_action_position = -1
         last_action = "NONE"
@@ -469,6 +430,7 @@ def get_actions_without_inf_agent(vals, inf_agent_name, full):
 
     actions_without_inf_agent = " ".join(all_actions)
     return actions_without_inf_agent, inf_agent_action
+
 
 def mmtom_get_variables(
     val_with_time,
@@ -867,15 +829,31 @@ def get_variables_with_time(
     prev_hyp="",
     states=None,
     actions=None,
-    question=None
+    question=None,
 ):
     if "MMToM" in dataset_name:
-        time_variables = mmtom_get_variables(val_with_time, variable_types, inf_agent_name,
-            inf_var_name, context, choices, K, llm, hypo_llm, world_rules, verbose, hypo_method,
-            dataset_name, full, init_state, states, actions, question
+        time_variables = mmtom_get_variables(
+            val_with_time,
+            variable_types,
+            inf_agent_name,
+            inf_var_name,
+            context,
+            choices,
+            K,
+            llm,
+            hypo_llm,
+            world_rules,
+            verbose,
+            hypo_method,
+            dataset_name,
+            full,
+            init_state,
+            states,
+            actions,
+            question,
         )
         return time_variables
-    
+
     res = []
     now_story = ""
     last_state = init_state
@@ -903,8 +881,8 @@ def get_variables_with_time(
                     now_state, vals["State"], llm, verbose, dataset_name
                 )
                 # The effect of inf_agent_action is delayed to next timestep (A_t takes place after S_t)
-                actions_without_inf_agent, inf_agent_action = get_actions_without_inf_agent(
-                    vals, inf_agent_name, full
+                actions_without_inf_agent, inf_agent_action = (
+                    get_actions_without_inf_agent(vals, inf_agent_name, full)
                 )
 
                 now_state = update_state(
@@ -976,73 +954,43 @@ def get_variables_with_time(
                 if (
                     var_type[1] == "Observation"
                 ):  # also change the way we propose hyp for belief
-
-                    if "FANToM" in dataset_name:
-                        if len(preproposed_ob_hypos) == 0:
+                    if len(preproposed_ob_hypos) == 0:
+                        if var_type[1] == "Belief" and "BigToM" in dataset_name:
+                            preproposed_ob_hypos += hypothesis_generation(
+                                [],
+                                choices,
+                                now_story,
+                                character,
+                                var_type[1],
+                                K,
+                                hypo_llm,
+                                prev_hyp,
+                                dataset_name,
+                            )
+                        else:
                             for c in choices:
-                                preproposed_ob_hypos += (
-                                    hypothesis_generation_FANToM(
-                                        [],
-                                        c,
-                                        now_story,
-                                        character,
-                                        var_type[1],
-                                        1,
-                                        hypo_llm,
-                                        prev_hyp,
-                                    )
+                                preproposed_ob_hypos += hypothesis_generation(
+                                    [],
+                                    c,
+                                    now_story,
+                                    character,
+                                    var_type[1],
+                                    1,
+                                    hypo_llm,
+                                    prev_hyp,
+                                    dataset_name,
                                 )
                             if prev_hyp in preproposed_ob_hypos:
                                 preproposed_ob_hypos.remove(prev_hyp)
 
-                            enh_print(
-                                f"New observation hypotheses: {preproposed_ob_hypos}",
-                                "red",
-                            )
-                        hypos = preproposed_ob_hypos
-
-                    else: 
-                        if len(preproposed_ob_hypos) == 0:
-                            if var_type[1] == "Belief" and "BigToM" in dataset_name:
-                                preproposed_ob_hypos += hypothesis_generation(
-                                        [],
-                                        choices,
-                                        now_story,
-                                        character,
-                                        var_type[1],
-                                        K,
-                                        hypo_llm,
-                                        prev_hyp,
-                                        dataset_name
-                                )
-                            else: 
-                                for c in choices:
-                                    preproposed_ob_hypos += hypothesis_generation(
-                                        [],
-                                        c,
-                                        now_story,
-                                        character,
-                                        var_type[1],
-                                        1,
-                                        hypo_llm,
-                                        prev_hyp,
-                                        dataset_name
-                                    )
-                                if prev_hyp in preproposed_ob_hypos:
-                                    preproposed_ob_hypos.remove(prev_hyp)
-
-                            # print(preproposed_ob_hypos)
-
-                            preproposed_ob_hypos += (
-                                hypothesis_generation_no_observation(
-                                    choices, character, hypo_llm, True
-                                )
-                            )
-                            enh_print(
-                                f"New observation hypotheses: {preproposed_ob_hypos}",
-                                "red",
-                            )
-                        hypos = preproposed_ob_hypos
+                        preproposed_ob_hypos += hypothesis_generation_no_observation(
+                            choices, character, hypo_llm, True
+                        )
+                        enh_print(
+                            f"New observation hypotheses: {preproposed_ob_hypos}",
+                            "red",
+                        )
+                    hypos = preproposed_ob_hypos
 
                 elif var_type[1] == "Goal" and known_Goal != "NONE":
                     var_dict[var_name] = Variable(
@@ -1056,14 +1004,28 @@ def get_variables_with_time(
                     if var_type[1] == "Belief" and "BigToM" in dataset_name:
                         hypo_c = []
                         hypo_c += hypothesis_generation(
-                            [], choices, now_story, character, var_type[1], K, hypo_llm, dataset_name
+                            [],
+                            choices,
+                            now_story,
+                            character,
+                            var_type[1],
+                            K,
+                            hypo_llm,
+                            dataset_name,
                         )
                     else:
                         hypo_c = []
                         for c in choices:
 
                             hypo_c += hypothesis_generation(
-                                [], c, now_story, character, var_type[1], 1, hypo_llm, dataset_name
+                                [],
+                                c,
+                                now_story,
+                                character,
+                                var_type[1],
+                                1,
+                                hypo_llm,
+                                dataset_name,
                             )
                     hypos = hypo_c
                 var_dict[var_name] = Variable(
@@ -1103,7 +1065,7 @@ def save_time_variables(dicts, model_name, episode_name):
 def save_reconstructed_story(vis, model_name, episode_name, first_agent_name):
     output_folder = "../results/nested"
     output_file = f"{output_folder}/{model_name}_{episode_name}_{first_agent_name}_reconstructed_story.csv"
-    
+
     os.makedirs(output_folder, exist_ok=True)
     with open(output_file, mode="w", newline="") as file:
         writer = csv.DictWriter(
@@ -1112,7 +1074,6 @@ def save_reconstructed_story(vis, model_name, episode_name, first_agent_name):
         writer.writeheader()
         for v in vis:
             writer.writerow(v)
-
 
 
 def save_belief_probs(probs, model_name, episode_name):
@@ -1128,9 +1089,7 @@ def save_belief_probs(probs, model_name, episode_name):
     print(f"Probs results saved to {output_file}")
 
 
-def save_metrics(
-    metrics, model_name, episode_name, back_inference, reduce_hypos
-):
+def save_metrics(metrics, model_name, episode_name, back_inference, reduce_hypos):
 
     output_folder = "../results/metrics"
     base_file_name = f"{model_name}_{episode_name}_back{int(back_inference)}_reduce{int(reduce_hypos)}_metrics.json"
@@ -1233,7 +1192,11 @@ def load_parsed_result(model_name, episode_name, reuse=False):
     file_name = f"../results/parsed_result/{model_name}_{episode_name}.json"
     if not os.path.isfile(file_name):
         if reuse is True:
-            file_name = get_filename_with_episode_name(episode_name=episode_name, base_path="../results/parsed_result/", suffix="json")
+            file_name = get_filename_with_episode_name(
+                episode_name=episode_name,
+                base_path="../results/parsed_result/",
+                suffix="json",
+            )
             if file_name is None:
                 return None
         else:
@@ -1248,7 +1211,9 @@ def load_time_variables(model_name, episode_name, reuse=False):
     file_name = f"../results/var/{model_name}_{episode_name}.csv"
     if not os.path.isfile(file_name):
         if reuse is True:
-            file_name = get_filename_with_episode_name(episode_name=episode_name, base_path="../results/var/")
+            file_name = get_filename_with_episode_name(
+                episode_name=episode_name, base_path="../results/var/"
+            )
             if file_name is None:
                 return None
         else:
@@ -1323,11 +1288,13 @@ def update_state(old_state, change, llm, verbose, dataset_name):
     change = change.strip()
     if change == "NONE" or change == "":
         return old_state
-    with open(f"prompts/prompts_{llm}/update_state.txt", "r", encoding="utf-8") as prompt_file:
+    with open(
+        f"prompts/prompts_{llm}/update_state.txt", "r", encoding="utf-8"
+    ) as prompt_file:
         prompt_template = prompt_file.read().strip()
     prompt = prompt_template.replace("[Old_State]", f"Old State: {old_state}")
     prompt = prompt.replace("[Change]", f"Change: {change}")
-    
+
     resp, cost = llm_request(prompt, temperature=0.0, model=llm)
     resp = resp.replace("\n", " ")
 
@@ -1355,28 +1322,34 @@ def save_hypos(hypos, model_name, episode_name):
 
 def get_answer_from_state(state, choices, llm):
     probs = []
-    state = 'Ground truth state: ' + state
+    state = "Ground truth state: " + state
     for c in choices:
-        probs.append(get_likelihood_general(state, c, llm, variable="Real", verbose=True))
+        probs.append(
+            get_likelihood_general(state, c, llm, variable="Real", verbose=True)
+        )
     probs = np.array(probs)
     probs = (probs / probs.sum()).tolist()
     return probs, {}
+
 
 def get_answer_memory_questions(story, question, choices, llm):
     probs = []
     state = get_initial_state_tomi(story, llm)
-    state = 'Initial state: ' + state
+    state = "Initial state: " + state
     for c in choices:
-        probs.append(get_likelihood_general(state, c, llm, variable="Memory", verbose=True))
+        probs.append(
+            get_likelihood_general(state, c, llm, variable="Memory", verbose=True)
+        )
     probs = np.array(probs)
     probs = (probs / probs.sum()).tolist()
     return probs, {}
 
+
 def split_sentences(story, llm):
     with open(
-            f"prompts/prompts_{llm}/split_sentences.txt", "r", encoding="utf-8"
-        ) as prompt_file:
-            prompt_template = prompt_file.read().strip()
+        f"prompts/prompts_{llm}/split_sentences.txt", "r", encoding="utf-8"
+    ) as prompt_file:
+        prompt_template = prompt_file.read().strip()
     prompt = prompt_template.replace("[Story]", f"Story: {story}")
     resp, cost = llm_request(prompt, temperature=0.0, model=llm)
     return resp
