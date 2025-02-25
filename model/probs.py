@@ -7,7 +7,6 @@ from utils import *
 import openai
 import os
 
-# openai.api_key = os.environ["OPENAI_API_KEY"]
 cost_of_estimating_likelihood = 0.0
 times_of_estimating = 0
 
@@ -217,14 +216,15 @@ B) Unlikely."""
         if verbose:
             print(prompt, "\n", prob_a)
         return prob_a
-    else:
-        prob_a = llama_likelihood_request(prompt, max_tokens=200)
+    elif "Llama-3.1-8B" in model:
+        prob_a = llama_likelihood_request(prompt, model, max_tokens=200)
         return prob_a
 
 
-def llama_likelihood_request(prompt, max_tokens=200):
+def llama_likelihood_request(
+    prompt, model_id="meta-llama/Meta-Llama-3.1-8B-Instruct", max_tokens=200
+):
     API_TOKEN = ""  # Put your API token here
-    model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
     pipeline = transformers.pipeline(
         "text-generation",
@@ -237,21 +237,21 @@ def llama_likelihood_request(prompt, max_tokens=200):
     model = pipeline.model
     tokenizer = pipeline.tokenizer
 
-    def compute_prob_of_string(prompt_text, candidate_text):
-        prompt_ids = tokenizer.encode(prompt_text, add_special_tokens=False)
-        candidate_ids = tokenizer.encode(candidate_text, add_special_tokens=False)
-        running_prob = 1.0
-        curr_input_ids = torch.tensor([prompt_ids], dtype=torch.long).to(model.device)
+    def compute_prob_of_string(inp, answer_tokens):
+        inputs = tokenizer.encode(inp, add_special_tokens=False)
+        inputs = torch.tensor([inputs], dtype=torch.long).to(model.device)
+        answer_tokens = tokenizer.encode(answer_tokens, add_special_tokens=False)
+        final_prob = 1.0
         with torch.no_grad():
-            for token_id in candidate_ids:
-                outputs = model(input_ids=curr_input_ids)
+            for token in answer_tokens:
+                outputs = model(input_ids=inputs)
                 logits = outputs.logits[0, -1, :]
                 probs = torch.softmax(logits, dim=-1)
-                token_prob = probs[token_id].item()
-                running_prob *= token_prob
-                next_input = torch.tensor([[token_id]], device=model.device)
-                curr_input_ids = torch.cat([curr_input_ids, next_input], dim=1)
-        return running_prob
+                probs = probs[token].item()
+                final_prob *= probs
+                next_input = torch.tensor([[token]], device=model.device)
+                inputs = torch.cat([inputs, next_input], dim=1)
+        return final_prob
 
     prob_a_unnormalized = compute_prob_of_string(prompt, "A) Likely.")
     prob_b_unnormalized = compute_prob_of_string(prompt, "B) Unlikely.")
@@ -306,18 +306,3 @@ def get_likelihood_test(prompt, verbose=True):
     if verbose:
         print(prompt, "\n", prob_a)
     return prob_a
-
-
-if __name__ == "__main__":
-    inf_agent = "'Eliza"
-
-    a = get_likelihood_test(
-        f"""Determine if the statement is likely, respond with only either A or B.
-    Eliza's Previous Belief: Eliza believes that the personal experiences shared in the discussion revolved around the parenting styles their parents exhibited. She herself shared about her parents' blend of authoritative and permissive parenting styles, setting rules but also allowing her freedom to make her own decisions. Alaynas experience involved having a nurturing mother who guided her towards making the right choices, Titus had parents who adopted a traditional, authoritarian style with strict rules and high expectations, Joaquin was raised in an egalitarian style in a multicultural household where everyone had a say, and Jaden grew up with a democratic parenting style where decision making was a shared responsibility.
-    Eliza's Observation: Eliza hears Alayna say she had a nurturing mother who guided her towards making the right choices, Titus say his parents adopted a traditional, authoritarian style with strict rules and high expectations, Joaquin say he was raised in an egalitarian style in a multicultural household where everyone had a say, and Jaden say he grew up with a democratic parenting style where decision making was a shared responsibility
-    Here is a statement of {inf_agent}'s current belief. If {inf_agent}'s current belief is not aligned with {inf_agent}'s observation, it is very unlikely.
-    Determine if {inf_agent}'s current belief is likely: Eliza believes that the personal experiences shared in the discussion revolved around the parenting styles their parents exhibited. She herself shared about her parents' blend of authoritative and permissive parenting styles, setting rules but also allowing her freedom to make her own decisions. Alaynas experience involved having a nurturing mother who guided her towards making the right choices, Titus had parents who adopted a traditional, authoritarian style with strict rules and high expectations, Joaquin was raised in an egalitarian style in a multicultural household where everyone had a say, and Jaden grew up with a democratic parenting style where decision making was a shared responsibility.
-    A) Likely.
-    B) Unlikely."""
-    )
-    print(a)
