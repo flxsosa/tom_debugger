@@ -1,5 +1,5 @@
 ## AutoToM: Automated Bayesian Inverse Planning and Model Discovery<br>for Open-ended Theory of Mind
-### [Paper](https://arxiv.org/abs/2502.15676) | [Project Page](https://chuanyangjin.com/AutoToM)
+### [Paper](https://arxiv.org/abs/2502.15676) | [Project Page](https://chuanyangjin.com/AutoToM) | [Tweet](https://x.com/chuanyang_jin/status/1894737913499246665)
 
 We propose AutoToM, an automated Bayesian Inverse Planning and Model Discovery for Open-ended Theory of Mind. 
 
@@ -35,16 +35,13 @@ Please check out ``playground.ipynb``. Simply replace the story and choices with
 
 ## Citation
 
-If you find the our paper and code useful, consider citing it:
+Please cite the paper and star this repo if you find it useful, thanks!
 
 ```bibtex
-@misc{zhang2025autotomautomatedbayesianinverse,
-      title={AutoToM: Automated Bayesian Inverse Planning and Model Discovery for Open-ended Theory of Mind}, 
-      author={Zhining Zhang and Chuanyang Jin and Mung Yao Jia and Tianmin Shu},
-      year={2025},
-      eprint={2502.15676},
-      archivePrefix={arXiv},
-      primaryClass={cs.AI},
-      url={https://arxiv.org/abs/2502.15676}, 
+@article{zhang2025autotom,
+  title={AutoToM: Automated Bayesian Inverse Planning and Model Discovery for Open-ended Theory of Mind},
+  author={Zhang, Zhining and Jin, Chuanyang and Jia, Mung Yao and Shu, Tianmin},
+  journal={arXiv preprint arXiv:2502.15676},
+  year={2025}
 }
 ```
