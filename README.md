@@ -31,7 +31,7 @@ We propose AutoToM, an automated Bayesian Inverse Planning and Model Discovery f
 
 ## Testing AutoToM with customized questions
 
-Please check out ``playground.ipynb``
+Please check out ``playground.ipynb``. Simply replace the story and choices with your customized input to see how *AutoToM* discover Bayesian models and conduct inverse planning!
 
 ## Citation
 
