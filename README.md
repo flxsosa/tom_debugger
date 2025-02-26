@@ -15,10 +15,6 @@ We propose AutoToM, an automated Bayesian Inverse Planning and Model Discovery f
 
     python ProbSolver.py --dataset_name "ToMi-1st" --assigned_model "['State', 'Observation', 'Belief']"
 
-## Testing AutoToM with customized questions
-
-Please check out ``playground.ipynb``
-
 ## Requirements
 
 - Install relevant packages:
@@ -32,6 +28,10 @@ Please check out ``playground.ipynb``
     `export OPENAI_API_KEY='your-api-key'`
     
     - On Windows: `set OPENAI_API_KEY='your-api-key'`
+
+## Testing AutoToM with customized questions
+
+Please check out ``playground.ipynb``
 
 ## Citation
 
