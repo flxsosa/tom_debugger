@@ -53,8 +53,9 @@ def infer_belief_at_timestamp(
 
     try:
         results, all_prob_estimations, all_node_results = inference_model.infer("Belief", self.model_name, self.episode_name, self.init_belief)
-    except Exception:
-        return (False, "", Variable("Previous Belief", True, False, ["NONE"], np.ones(1)), all_prob_estimations, all_probs)
+    except Exception as e:
+        print(f"Exception {e}")
+        return (Variable("Previous Belief", True, False, ["NONE"], np.ones(1)), all_prob_estimations, all_probs)
     
     self.translate_and_add_node_results(self, i, all_node_results)
     previous_belief = deepcopy(var_i[belief_name])
