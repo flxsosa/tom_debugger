@@ -1,4 +1,4 @@
-## AutoToM: Automated Bayesian Inverse Planning and Model Discovery<br>for Open-ended Theory of Mind
+## AutoToM: Scaling Model-based Mental Inference via Automated Agent Modeling
 ### [Paper](https://arxiv.org/abs/2502.15676) | [Project Page](https://chuanyangjin.com/AutoToM) | [Tweet](https://x.com/chuanyang_jin/status/1894737913499246665)
 
 We propose AutoToM, an automated Bayesian Inverse Planning and Model Discovery for Open-ended Theory of Mind. 
