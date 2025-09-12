@@ -1,8 +1,11 @@
-import numpy as np
-from utils import *
-from probs import *
+import csv
 from copy import deepcopy
 import json
+
+import numpy as np
+
+from utils import *
+from probs import *
 
 
 class Variable:
@@ -441,7 +444,6 @@ def mmtom_get_variables(
     K,
     llm,
     hypo_llm,
-    world_rules,
     verbose,
     hypo_method,
     dataset_name,
@@ -819,7 +821,6 @@ def get_variables_with_time(
     K,
     llm,
     hypo_llm,
-    world_rules,
     verbose,
     hypo_method,
     dataset_name,
@@ -841,7 +842,6 @@ def get_variables_with_time(
             K,
             llm,
             hypo_llm,
-            world_rules,
             verbose,
             hypo_method,
             dataset_name,

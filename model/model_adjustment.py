@@ -3,11 +3,9 @@ from scipy.stats import entropy
 import openai
 import copy
 
-benefit_threshold = 0.02
-# terminate_threshold = 0.6
-utility_terminate_threshold = -0.673
-
-model_space = [
+BENEFIT_THRESHOLD = 0.02
+UTILITY_TERMINATE_THRESHOLD = -0.673
+MODEL_SPACE = [
     ['State', 'Observation', 'Belief', 'Action', 'Goal'],   # POMDP
     ['State', 'Observation', 'Belief', 'Action'],           # POMDP variant without Goal
     ['State', 'Observation', 'Belief'],                     # Simple Markov Model
@@ -18,28 +16,105 @@ model_space = [
     ['State', 'Action'],                                    # MDP variant without Goal
     ['State'],                                              # MDP variant without Action and Goal
 ]
+ALL_VARIABLES = [
+    "State",
+    "Observation",
+    "Belief",
+    "Action",
+    "Goal",
+    "Utterance",
+    "Belief of Goal"
+]
 
-all_variables = ["State", "Observation", "Belief", "Action", "Goal", "Utterance", "Belief of Goal"]
 
-def model_discovery(start_timestep, all_timesteps, verbose, time_variables, previous_belief, inf_agent_name, inf_var_name, estimation_dictionary, \
-                        infer_last_timestamp, no_observation_hypothesis, variable_values_with_time, all_probs, answerfunc, argmax, argmin, save_belief_probs, model_name, \
-                        episode_name, infer_belief_at_timestamp, belief_name, get_variables_at_time, mmtom_get_variables_at_time, choices, K, llm, hypo_llm, hypo_method, full, \
-                        preproposed_ob_hypos, last_state, inf_agent_action, assigned_models, file_path, clear_current_nodes, dataset_name, states, actions, question, precomputed_states, \
-                        model_variables, no_model_adjustment, self):
-    
-    results, terminate, model_variables = Bayesian_inference(start_timestep, all_timesteps, verbose, time_variables, previous_belief, inf_agent_name, inf_var_name, estimation_dictionary, \
-                        infer_last_timestamp, no_observation_hypothesis, variable_values_with_time, all_probs, answerfunc, argmax, argmin, save_belief_probs, model_name, \
-                        episode_name, infer_belief_at_timestamp, belief_name, get_variables_at_time, mmtom_get_variables_at_time, choices, K, llm, hypo_llm, hypo_method, full, \
-                        preproposed_ob_hypos, last_state, inf_agent_action, assigned_models, dataset_name, states, actions, question, precomputed_states, model_variables, self)
-    
+def model_discovery(
+    start_timestep,
+    all_timesteps,
+    verbose,
+    time_variables,
+    previous_belief,
+    inf_agent_name,
+    inf_var_name,
+    estimation_dictionary,
+    infer_last_timestamp,
+    no_observation_hypothesis,
+    variable_values_with_time,
+    all_probs,
+    answerfunc,
+    argmax,
+    argmin,
+    save_belief_probs,
+    model_name,
+    episode_name,
+    infer_belief_at_timestamp,
+    belief_name,
+    get_variables_at_time,
+    mmtom_get_variables_at_time,
+    choices,
+    K,
+    llm,
+    hypo_llm,
+    hypo_method,
+    full,
+    preproposed_ob_hypos,
+    last_state,
+    inf_agent_action,
+    assigned_models,
+    file_path,
+    clear_current_nodes,
+    dataset_name,
+    states,
+    actions,
+    question,
+    precomputed_states,
+    model_variables,
+    no_model_adjustment,
+    self):
+    results, terminate, model_variables = Bayesian_inference(
+        start_timestep,
+        all_timesteps,
+        verbose,
+        time_variables,
+        previous_belief,
+        inf_agent_name,
+        inf_var_name,
+        estimation_dictionary,
+        infer_last_timestamp,
+        no_observation_hypothesis,
+        variable_values_with_time,
+        all_probs,
+        answerfunc,
+        argmax,
+        argmin,
+        save_belief_probs,
+        model_name,
+        episode_name,
+        infer_belief_at_timestamp,
+        belief_name,
+        get_variables_at_time,
+        mmtom_get_variables_at_time,
+        choices,
+        K,
+        llm,
+        hypo_llm,
+        hypo_method,
+        full,
+        preproposed_ob_hypos,
+        last_state,
+        inf_agent_action,
+        assigned_models,
+        dataset_name,
+        states,
+        actions,
+        question,
+        precomputed_states,
+        model_variables,
+        self)
     print("Initial Terminate: ", terminate)
-
     if no_model_adjustment:
         return results, terminate, assigned_models, model_variables
-
     if terminate:
         return results, terminate, assigned_models, model_variables
-    
     initial_utility = - entropy(results)
     print("Initial Utility: ", initial_utility)
 
@@ -66,11 +141,11 @@ def model_discovery(start_timestep, all_timesteps, verbose, time_variables, prev
     ]
 
     recompute = False
-    while assigned_models[start_timestep] != model_space[0]:
+    while assigned_models[start_timestep] != MODEL_SPACE[0]:
         utility_experiments = {}
         for var in variables_for_experiments:
             model = modify_variables(assigned_models[start_timestep], [var])
-            if model not in model_space:
+            if model not in MODEL_SPACE:
                 continue
 
             utility = model_experiment(assigned_models, model, model_variables)
@@ -86,7 +161,7 @@ def model_discovery(start_timestep, all_timesteps, verbose, time_variables, prev
             
         best_var, best_utility = max(utility_experiments.items(), key=lambda item: item[1])
         # if best_utility > terminate_threshold:
-        if best_utility > utility_terminate_threshold:
+        if best_utility > UTILITY_TERMINATE_THRESHOLD:
             assigned_models[start_timestep] = modify_variables(assigned_models[start_timestep], [best_var])
 
             clear_current_hypotheses(file_path, start_timestep)
@@ -96,7 +171,7 @@ def model_discovery(start_timestep, all_timesteps, verbose, time_variables, prev
                         episode_name, infer_belief_at_timestamp, belief_name, get_variables_at_time, mmtom_get_variables_at_time, choices, K, llm, hypo_llm, hypo_method, full, \
                         preproposed_ob_hypos, last_state, inf_agent_action, assigned_models, dataset_name, states, actions, question, precomputed_states, model_variables, self)
             return results, terminate, assigned_models, model_variables
-        elif best_utility - initial_utility < benefit_threshold:
+        elif best_utility - initial_utility < BENEFIT_THRESHOLD:
             break
         else:
             assigned_models[start_timestep] = modify_variables(assigned_models[start_timestep], [best_var])
@@ -111,7 +186,6 @@ def model_discovery(start_timestep, all_timesteps, verbose, time_variables, prev
                         preproposed_ob_hypos, last_state, inf_agent_action, assigned_models, dataset_name, states, actions, question, precomputed_states, model_variables, self)
 
     return results, terminate, assigned_models, model_variables
-    
 
 
 def Bayesian_inference(start_timestep, all_timesteps, verbose, time_variables, previous_belief, inf_agent_name, inf_var_name, estimation_dictionary, \
@@ -195,11 +269,11 @@ def Bayesian_inference(start_timestep, all_timesteps, verbose, time_variables, p
             utility = - entropy(results)
             if len(results) == 2:
                 # if max(results) > terminate_threshold:
-                if utility > utility_terminate_threshold:
+                if utility > UTILITY_TERMINATE_THRESHOLD:
                     terminate = True
             else:
                 # if answerfunc == argmax and max(results) > terminate_threshold:
-                if answerfunc == argmax and utility > utility_terminate_threshold:
+                if answerfunc == argmax and utility > UTILITY_TERMINATE_THRESHOLD:
                     terminate = True
                 elif answerfunc == argmin and min(results) < 0.2:
                     terminate = True
@@ -221,7 +295,6 @@ def Bayesian_inference(start_timestep, all_timesteps, verbose, time_variables, p
                 all_probs=all_probs, 
                 no_observation_hypothesis=no_observation_hypothesis, 
                 all_prob_estimations=estimation_dictionary)
-    
 
 
 def gpt_call(prompt):
@@ -237,46 +310,75 @@ def gpt_call(prompt):
     return response.choices[0].message.content
 
 
-def initial_model_proposal(question, inference_var, nested, contains_utterance):
-    example_question = "Sally has a ball. She puts it in her basket. When Sally goes out for a walk, Anne moves the ball out of the basket and puts it in the box. Where will Sally look for the ball?"
+def initial_model_proposal(question, query_variable, contains_utterance):
+    """
+    Proposes an initial set of variables to use for the agent model.
+
+    query_variable is the latent variable to query from the question, e.g.
+    'Belief', 'State', etc.
+
+    Args:
+        question: The question being solved from a specific dataset.
+        query_variable: The latent variable to query from the question.
+        contains_utterance: Whether the question contains an utterance.
+
+    Returns:
+        assigned_model: The initial set of variables to use for the agent model.
+    """
+    example_question = (
+        "Sally has a ball. She puts it in her basket. ",
+        "When Sally goes out for a walk, ",
+        "Anne moves the ball out of the basket and puts it in the box. ",
+        "Where will Sally look for the ball?"
+    )
     example_answer = "['State', 'Observation', 'Belief']"
-    prompt = f"What variables are necessary to solve this question? Please provide the answer without an explanation. \
-        Please select from the following: ['State', 'Observation', 'Belief', 'Action', 'Goal'] \
-        State: The true condition of the environment. This should always be included. \
-        Observation: The observed information about the state. Include this when the agent has partial observations of the state. \
-        Belief: The agent's current estimation of the true state based on the state or its observation. \
-        Action: A move made by the agent, informed by the state or belief. Include this only when it is directly relevant to answering the question. \
-        Goal: The objective the agent is trying to achieve. Include this only if 'Action' is included. \n\
-        Question: {example_question} \n\
-        Variables: {example_answer} \n\
-        Question: {question} \n\
-        Variables: "
+    prompt = (
+        "What variables are necessary to solve this question? "
+        "Please provide the answer without an explanation. "
+        "Please select from the following: "
+        "['State', 'Observation', 'Belief', 'Action', 'Goal'] "
+        "State: The true condition of the environment. "
+        "This should always be included. "
+        "Observation: The observed information about the state. "
+        "Include this when the agent has partial observations of the state."
+        "Belief: The agent's current estimation of the true state based on "
+        "the state or its observation."
+        "Action: A move made by the agent, informed by the state or belief. "
+        "Include this only when it is directly relevant to answering the question. "
+        "Goal: The objective the agent is trying to achieve. Include this "
+        "only if 'Action' is included. \n"
+        f"Question: {example_question} \n"
+        f"Variables: {example_answer} \n"
+        f"Question: {question} \n"
+        "Variables: "
+        )
+    # Grab LM response and evaluate to list of variables
     response = gpt_call(prompt)
+    # TODO: Get rid of eval statement
     assigned_model = eval(response)
-    
-    if inference_var not in assigned_model:
-        assigned_model.append(inference_var)
-        assigned_model = sorted(assigned_model, key=all_variables.index)
-    
-    if assigned_model not in model_space:
+    # If the query variable is not in the initial agent model, add it
+    if query_variable not in assigned_model:
+        assigned_model.append(query_variable)
+        assigned_model = sorted(assigned_model, key=ALL_VARIABLES.index)
+    # NOTE: This might not be useful in the event we're computing P(r|V,X)
+    if assigned_model not in MODEL_SPACE:
         if "State" not in assigned_model:
             assigned_model.append("State")
         if "Observation" in assigned_model and "Belief" not in assigned_model:
             assigned_model.append("Belief")
         if "Goal" in assigned_model and "Action" not in assigned_model:
             assigned_model.append("Action")
-        assigned_model = sorted(assigned_model, key=all_variables.index)
-    
+        assigned_model = sorted(assigned_model, key=ALL_VARIABLES.index)
     # assert assigned_model in model_space
-    temp_assigned_model = [model for model in assigned_model if model != "Belief of Goal"]
-    assert temp_assigned_model in model_space
-
+    temp_assigned_model = [
+        model for model in assigned_model if model != "Belief of Goal"]
+    assert temp_assigned_model in MODEL_SPACE
     if contains_utterance:
         assigned_model.append("Utterance")
-
     print("Initial Model proposed: ", assigned_model)
     # assigned_model = ['State', 'Observation', 'Belief', 'Action', 'Goal']
     return assigned_model
+
 
 def determine_realistic_questions(question):
     prompt = f"Determine whether the question is about realistic physical states. \
@@ -298,7 +400,8 @@ def determine_realistic_questions(question):
         return True
     else:
         return False
-    
+
+
 def determine_memory_questions(question):
     prompt = f"Determine whether the question is about where an object was initially. \
         Please respond with 'Yes' or 'No'. \n\
@@ -340,6 +443,7 @@ def determine_higher_order_belief(question):
     else:
         return False
 
+
 def modify_variables(assigned_model, vars, action="add"):
     modified_model = assigned_model[:]
     
@@ -350,7 +454,7 @@ def modify_variables(assigned_model, vars, action="add"):
             assert var not in modified_model
             modified_model.append(var)
         modified_model = sorted(
-            modified_model, key=all_variables.index
+            modified_model, key=ALL_VARIABLES.index
         )
     elif action == "remove":
         for var in vars:

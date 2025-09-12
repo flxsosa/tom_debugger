@@ -14,7 +14,6 @@ from utils import *
         llm (str): name of the LLM that we want to use 
         times (dict): dictionary of the indices for the times of each variable we will use in the Bayesian inference  
         verbose: 
-        world_rules (None): not used 
 
     Functions:
         init: initialize the BayesianInferenceModel 
@@ -39,7 +38,6 @@ class BayesianInferenceModel:
         episode_name,
         answer_choices,
         K,
-        world_rules=None,
         all_prob_estimations={},
         no_observation_hypothesis="NONE",
         reduce_hypotheses=False,

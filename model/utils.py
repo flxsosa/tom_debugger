@@ -1,12 +1,10 @@
 import json
 from openai import OpenAI
-import csv
 import string
 import math
 import os
 import base64
 from PIL import Image
-import pandas as pd
 import io
 import cv2
 import transformers
