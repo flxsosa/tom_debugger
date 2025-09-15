@@ -1,29 +1,11 @@
-import numpy as np
-from copy import deepcopy, copy
-from probs import get_logits, get_likelihood
 import itertools
-from ElementExtractor import *
-from utils import *
+from copy import deepcopy, copy
 
-"""
-    Creates a BayesianInferenceModel class that will setup and run the Bayesian inference 
+import numpy as np
 
-    Args:
-        variables (list): list of variables and its corresponding values we will use in the Bayesian inference  
-        context (str): the context for the question 
-        llm (str): name of the LLM that we want to use 
-        times (dict): dictionary of the indices for the times of each variable we will use in the Bayesian inference  
-        verbose: 
-
-    Functions:
-        init: initialize the BayesianInferenceModel 
-        rewrite_graph: rewrite the parent graph based on the variables that we want to use in our Bayesian inference
-        regenerate_observation_hypotheses: regenerate observation hypotheses 
-        recompute_combinations: recompute the combinations given the new observation hypotheses if we regenerated the observation hypotheses 
-        calculate_prob_product: calculate the likelihoods and the probability for an answer choice of the inferring variable 
-        infer: infer the probabilities for the inferring variable 
-"""
-
+import ElementExtractor
+import utils
+import probs
 
 class BayesianInferenceModel:
     def __init__(
@@ -38,10 +20,12 @@ class BayesianInferenceModel:
         episode_name,
         answer_choices,
         K,
-        all_prob_estimations={},
+        all_prob_estimations=None,
         no_observation_hypothesis="NONE",
         reduce_hypotheses=False,
     ):
+        if all_prob_estimations is None:
+            all_prob_estimations = {}
         self.model_name = model_name
         self.episode_name = episode_name
         self.K = K
@@ -88,33 +72,59 @@ class BayesianInferenceModel:
         self.previous_observation_hypotheses.update(initial_observations)
 
     def rewrite_graph(self):
+        """Remove variables not in self.variables from parent_graph while
+        preserving dependencies.
+
+        Performs topological sorting with graph contraction to eliminate
+        missing variables from the Bayesian network structure. When a variable
+        is removed, its dependencies are transitively connected to its children
+        to maintain proper inference relationships.
+
+        Args:
+            None (uses self.parent_graph and self.variables)
+
+        Returns:
+            None (modifies self.parent_graph in place)
+        """
+        # Copy original graph
         new_parent_graph = deepcopy(self.parent_graph)
+        # Track incoming edges count
         in_degree = {}
+        # Parent → Children mapping  
         son_graph = {}
+        # Processing queue
         stack = []
 
         for key, val in new_parent_graph.items():
+            # Count parents for each variable
             in_degree[key] = len(val)
             for par in val:
                 if par in son_graph:
+                    # Add child to parent's list
                     son_graph[par].append(key)
                 else:
+                    # Create new parent entry
                     son_graph[par] = [key]
 
         all_variables = set()
+        # Add child variables
         for key, val in new_parent_graph.items():
             all_variables.add(key)
+            # Add parent variables
             for v in val:
                 all_variables.add(v)
 
         for key in all_variables:
             if key not in in_degree or in_degree[key] == 0:
+                # Variables with no parents go first
                 stack.append(key)
+        # Process variables in topological order
         while len(stack):
             now_var = stack[0]
-            # #print(now_var)
             if now_var not in self.variables:
+                # Parent of now_var
                 left = new_parent_graph[now_var] if now_var in new_parent_graph else []
+                # Children of now_var
                 right = son_graph[now_var] if now_var in son_graph else []
                 for j in right:
                     new_parent_graph[j].remove(now_var)
@@ -130,26 +140,34 @@ class BayesianInferenceModel:
                         if v == now_var:
                             new_parent_graph[key] = val.remove(v)
                             break
-                # #print(now_var, 'deleted')
             stack.pop(0)
             if now_var not in son_graph:
                 continue
             for son in son_graph[now_var]:
                 in_degree[son] -= 1
                 if in_degree[son] == 0:
-                    stack.append(son)
+                    stack.append(son)  # New root variable
         self.parent_graph = new_parent_graph
         if self.verbose:
-            enh_print(f"New graph: {new_parent_graph}", color="red")
-        # quit()
+            utils.enh_print(f"New graph: {new_parent_graph}", color="red")
 
     def recompute_combinations(self, left, infer_var_name):
+        """Generate all possible combinations of latent variable values.
+
+        Args:
+            left: List of latent variable names
+            infer_var_name: Name of variable being inferred
+
+        Returns:
+            List of all possible combinations of latent variable values
+        """
         combo = []
         for unob_var_name in left:
             if unob_var_name == infer_var_name:
                 continue
             no_prior = True
-            if isinstance(self.variables[unob_var_name].prior_probs, np.ndarray):
+            if isinstance(
+                self.variables[unob_var_name].prior_probs, np.ndarray):
                 no_prior = False
             tmp = []
             for i, val in enumerate(self.variables[unob_var_name].possible_values):
@@ -161,6 +179,18 @@ class BayesianInferenceModel:
         return list(itertools.product(*combo))
 
     def calculate_prob_product(self, var_dict, calc):
+        """Calculate the probability product of a variable's possible values.
+
+        Args:
+            var_dict: Dictionary of variable names and their possible values
+            calc: List of tuples (variable name, list of parent variables)
+
+        Returns:
+            Tuple containing:
+            - Probability product
+            - Dictionary of individual likelihoods
+            - List of tuples (variable name, list of parent variables, variable value, likelihood)
+        """
         prob = 1.0
         individual_likelihoods = {}
         node_results_tracker = []
@@ -171,8 +201,7 @@ class BayesianInferenceModel:
                 if "State" in parent:
                     if "Previous" in parent:
                         if (
-                            not "no new observations compared to previous timestamp"
-                            in var_dict[son]
+                            "no new observations compared to previous timestamp" not in var_dict[son]
                         ):
                             continue
                     info_var.append(f"{parent}: {var_dict[parent]}")
@@ -202,10 +231,9 @@ class BayesianInferenceModel:
                     or self.dataset_name == "BigToM_fafb"
                 ):
                     info = [info, (self.answer_choices)]
-                    logits = get_likelihood(
+                    logits = probs.get_likelihood(
                         info,
                         f"{var_dict[son]}",
-                        dataset_name=self.dataset_name,
                         model=self.llm,
                         verbose=self.verbose,
                         variable="Actions",
@@ -214,10 +242,9 @@ class BayesianInferenceModel:
                 if key in self.recorder:
                     logits = self.recorder[key]
                 else:
-                    logits = get_likelihood(
+                    logits = probs.get_likelihood(
                         info,
                         f"{var_dict[son]}",
-                        dataset_name=self.dataset_name,
                         model=self.llm,
                         verbose=self.verbose,
                         variable=son,
@@ -320,21 +347,37 @@ class BayesianInferenceModel:
         return all_node_results
 
     def infer(self, infer_var_name, model_name, episode_name, init_belief=False):
-        # enh_print("Init Belief" + str(init_belief), "red")
-        if (
-            "BigToM" in self.dataset_name and init_belief and "Belief" in self.variables
-        ):  # init_belief means that there are no actions of the agent so we only calculate P(belief0) and then use it for other calculations if needed
+        """
+        Infer the variable of interest using Bayesian Inference.
 
-            # initial belief TODO make this dynamic depending on how many timestamps
+        Args:
+            infer_var_name: The variable to infer.
+            model_name: The name of the model.
+            episode_name: The name of the episode.
+            init_belief: Whether to initialize the belief.
+
+        Returns:
+            The probabilities of the variable of interest.
+            The recorder.
+            The node results.
+        """
+        if (
+            "BigToM" in self.dataset_name and
+            init_belief and
+            "Belief" in self.variables
+        ):
+            # NOTE: init_belief means that there are no actions of the agent
+            # so we only calculate P(belief0) and then use it for other
+            # calculations if needed
+            # TODO: make init_belief dynamic depending on how many timestamps
             if infer_var_name == "Action":
-                # calculate P(initial B)
+                # calculate P(initial Belief)
                 initial_belief_vals = self.variables["Belief"].possible_values
                 probs = []
                 for b in initial_belief_vals:
-                    logits = get_likelihood(
+                    logits = probs.get_likelihood(
                         self.context,
                         b,
-                        dataset_name=self.dataset_name,
                         model=self.llm,
                         verbose=self.verbose,
                         variable="Initial Belief",
@@ -345,17 +388,16 @@ class BayesianInferenceModel:
                 probs = exps / np.sum(exps)
                 max_prob = max(probs)
                 max_prob = np.where(probs == max_prob)[0][0]
-                print(max_prob, probs)
                 init_belief = initial_belief_vals[max_prob]
                 # init belief is not uniform
-                new_belief = Variable(
+                new_belief = ElementExtractor.Variable(
                     name="Belief",
                     in_model=True,
                     is_observed=True,
                     possible_values=[init_belief],
                     prior_probs=max(probs),
                 )
-                new_prev_belief = Variable(
+                new_prev_belief = ElementExtractor.Variable(
                     name="Previous Belief",
                     in_model=True,
                     is_observed=True,
@@ -363,8 +405,11 @@ class BayesianInferenceModel:
                     prior_probs=max(probs),
                 )
 
+                # NOTE: since there are no actions from the main_agent then we
+                # just calculate P(init belief) and use it for action
+                # likelihood estimation
                 self.variables["Belief"] = (
-                    new_belief  # since there are no actions from the main_agent then we just calculate P(init belief) and use it for action likelihood estimation
+                    new_belief
                 )
                 self.variables["Previous Belief"] = new_prev_belief
 
@@ -373,10 +418,9 @@ class BayesianInferenceModel:
                 probs = []
 
                 for b in initial_belief_vals:
-                    logits = get_likelihood(
+                    logits = probs.get_likelihood(
                         self.context,
                         b,
-                        dataset_name=self.dataset_name,
                         model=self.llm,
                         verbose=self.verbose,
                         variable="Initial Belief",
@@ -425,10 +469,12 @@ class BayesianInferenceModel:
                         ),
                     ],
                 )
+        # Rewrite graph to remove variables not in self.variables
         self.rewrite_graph()
 
         left = []
         right = []
+        # Add observed variables to right, latent variables to left
         for key, var in self.variables.items():
             if var.is_observed:
                 right.append(var.name)
@@ -439,9 +485,9 @@ class BayesianInferenceModel:
 
         all_node_results = []
         if (
-            "Belief" in self.variables
-            and len(self.variables["Belief"].possible_values) == 1
-        ):  # Belief only have one hypotheses -> certain belief -> model without observation, only do P(Action|Goal,Belief)
+            "Belief" in self.variables and
+            len(self.variables["Belief"].possible_values) == 1
+        ):
             print("Not considering Observation in the model")
             if "Observation" in self.parent_graph:
                 del self.parent_graph["Observation"]
@@ -452,14 +498,16 @@ class BayesianInferenceModel:
                 all_node_results += self.reduce_obs_hypospace()
             if "Belief" in left and infer_var_name != "Belief":
                 all_node_results += self.reduce_belief_hypospace()
-
+        # Generate all possible combinations of latent variable values
         combo = self.recompute_combinations(left, infer_var_name)
 
         var_dict = {}
+        # Set observed variables to their possible values
         for ob_var_name in right:
             var_dict[ob_var_name] = self.variables[ob_var_name].possible_values[0]
 
         all_var_names = left + right
+        # List of tuples (variable name, list of parent variables)
         calc = []
         if self.verbose:
             print("=", end="")
@@ -488,11 +536,11 @@ class BayesianInferenceModel:
         probs = []
 
         for infer_var_hypo in infer_var.possible_values:
+            print(f"Calculating probability for {infer_var_name} = {infer_var_hypo}")
             prob_sum = 0.0
             var_dict[infer_var_name] = infer_var_hypo
 
             for comb in combo:
-
                 prior_prob = 1.0
                 for i, (val, prob) in enumerate(comb):
                     var_dict[left[i]] = val
