@@ -172,13 +172,13 @@ class ProblemSolver:
         
         # Initialize cost tracking
         self.start_cost = (
-            probs.cost_of_estimating_likelihood
+            probs.COST_OF_EST_LKLD
             + utils.cost_of_information_extracting
             + utils.cost_of_proposing_hypotheses
         )
         self.middle_result_cost = self.start_cost
         self.start_api = (
-            probs.times_of_estimating
+            probs.TIMES_OF_EST
             + utils.times_of_information_extracting
             + utils.times_of_proposing_hypotheses
         )
@@ -541,12 +541,12 @@ class ProblemSolver:
         # Step 13: Update timing and cost metrics
         self.middle_result_time = time.time()
         self.middle_result_cost = (
-            probs.cost_of_estimating_likelihood
+            probs.COST_OF_EST_LKLD
             + utils.cost_of_information_extracting
             + utils.cost_of_proposing_hypotheses
         )
         self.middle_api = (
-            probs.times_of_estimating
+            probs.TIMES_OF_EST
             + utils.times_of_information_extracting
             + utils.times_of_proposing_hypotheses
         )
@@ -1005,12 +1005,12 @@ def main(args):
         # Step 14: Calculate final timing and cost metrics
         end_time = time.time()
         end_cost = (
-            probs.cost_of_estimating_likelihood
+            probs.COST_OF_EST_LKLD
             + utils.cost_of_information_extracting
             + utils.cost_of_proposing_hypotheses
         )
         end_api = (
-            probs.times_of_estimating
+            probs.TIMES_OF_EST
             + utils.times_of_information_extracting
             + utils.times_of_proposing_hypotheses
         )

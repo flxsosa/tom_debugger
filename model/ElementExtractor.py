@@ -23,6 +23,17 @@ class Variable:
         self.possible_values = possible_values
         self.prior_probs = prior_probs
 
+    # def __str__(self):
+    #     string = (
+    #         f'Variable(name="{self.name}'
+    #         f"\n\tin_model={self.in_model}"
+    #         f"\n\tis_observed={self.is_observed}"
+    #         f"\n\t{self.possible_values}"
+    #         f"\n\tpossible_values={self.possible_values}"
+    #         f"\n\tprior_probs={self.prior_probs})"
+    #     )
+    #     return string
+
     def __repr__(self):
         return f'Variable(name="{self.name}", in_model={self.in_model}, is_observed={self.is_observed}, possible_values={self.possible_values}, prior_probs={self.prior_probs})'
 
