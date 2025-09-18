@@ -177,6 +177,29 @@ def get_likelihood_general(
         A) Likely.
         B) Unlikely."""
 
+    # P(Response | Belief, Goal, Query)
+    elif "Response" in variable:
+        print(f"Information passed to Response variable:\n\t{info}")
+        prompt = (
+            f"Determine if the response choice is likely, respond with only either A or B.\n"
+            f"Story Context: {info}\n"  # This contains Belief, Goal, Utterance info
+            f"Question: {statement}\n"  # This is the query (q)
+            f"Given the story context and the character's mental state (belief and goal), "
+            f"determine how likely it is that an external agent (LLM or human) would "
+            f"choose this answer when asked about the character's behavior.\n"
+            f"An external agent would likely choose answers that align with:\n"
+            f"1. What they understand about the character's mental state\n"
+            f"2. The observable events they can see in the story\n"
+            f"3. The logical implications of the story context\n"
+            f"If the character's belief and observable events suggest a particular "
+            f"answer is correct, an external agent is likely to choose that answer.\n"
+            f"If the character's belief or observable events contradict an answer choice, "
+            f"an external agent is unlikely to choose that answer.\n"
+            f"Determine if this response choice is likely.\n"
+            f"A) Likely.\n"
+            f"B) Unlikely."
+        )
+
     else:
         prompt = f"""Determine if the statement is likely, respond with only either A or B.  If it's not certain but it's possible, it's considered likely. If it contradicts to the given information in some way, then it is unlikely. 
         {info}

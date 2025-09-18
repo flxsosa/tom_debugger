@@ -56,6 +56,7 @@ class BayesianInferenceModel:
             "Utterance": ["Goal", "Belief", "Emotion"],
             "Emotion": ["Goal", "Belief"],
             "Expression": ["Emotion"],
+            "Response": ["Goal", "Belief", "Utterance"],
         }
         self.recorder = all_prob_estimations
         self.verbose = verbose
@@ -536,7 +537,6 @@ class BayesianInferenceModel:
         probs = []
 
         for infer_var_hypo in infer_var.possible_values:
-            print(f"Calculating probability for {infer_var_name} = {infer_var_hypo}")
             prob_sum = 0.0
             var_dict[infer_var_name] = infer_var_hypo
 

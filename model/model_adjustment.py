@@ -6,6 +6,15 @@ import copy
 BENEFIT_THRESHOLD = 0.02
 UTILITY_TERMINATE_THRESHOLD = -0.673
 MODEL_SPACE = [
+    ['State', 'Observation', 'Belief', 'Action', 'Goal', 'Response'],   # POMDP + Response
+    ['State', 'Observation', 'Belief', 'Action', 'Response'],           # POMDP variant + Response
+    ['State', 'Observation', 'Belief', 'Response'],                     # Simple Markov Model + Response
+    ['State', 'Belief', 'Action', 'Goal', 'Response'],                  # POMDP variant + Response
+    ['State', 'Belief', 'Action', 'Response'],                          # POMDP variant + Response
+    ['State', 'Belief', 'Response'],                                    # Simple Markov Model + Response
+    ['State', 'Action', 'Goal', 'Response'],                            # MDP + Response
+    ['State', 'Action', 'Response'],                                    # MDP variant + Response
+    ['State', 'Response'],  
     ['State', 'Observation', 'Belief', 'Action', 'Goal'],   # POMDP
     ['State', 'Observation', 'Belief', 'Action'],           # POMDP variant without Goal
     ['State', 'Observation', 'Belief'],                     # Simple Markov Model
@@ -23,7 +32,8 @@ ALL_VARIABLES = [
     "Action",
     "Goal",
     "Utterance",
-    "Belief of Goal"
+    "Belief of Goal",
+    "Response"
 ]
 
 
