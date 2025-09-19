@@ -10,7 +10,7 @@ if 'model' not in os.getcwd():
 from ProbSolver import ProblemSolver, argmax
 import ElementExtractor
 
-def test_response_prediction():
+def test_p_v_given_x():
     """Test if AutoToM can find the best graph explaining a given response."""
     
     # Use the playground example
@@ -28,18 +28,11 @@ def test_response_prediction():
     choices = ["envelope", "box"]
     
     # Step 1: Randomly select a response
-    true_response = random.choice(choices)
-    true_response = "box"
-    print(f"Selected response: {true_response}")
-    
-    # Step 2: Create a modified story that includes the response as an "observed" action
-    # We'll treat the response as if Ella actually said/acted this way
-    modified_story = story + f"\n10 Ella said: 'I will look in the {true_response}.'"
-    
-    print(f"Modified story:\n{modified_story}")
+    target_v = 'envelope'
+    target_response = "box"
     
     # Step 3: Test the current system first
-    print("\n=== Testing Current System (p(q|X)) ===")
+    print("Testing Current System (p(V|X))")
     solver_current = ProblemSolver(
         story=story,
         question=question,
@@ -49,7 +42,7 @@ def test_response_prediction():
         model_name="automated",
         episode_name="test_current",
         llm="gpt-4o",
-        verbose=True,
+        verbose=False,
         dataset_name="test",
         hypo_method="guided",
         nested=False,
@@ -65,11 +58,10 @@ def test_response_prediction():
     )
     
     final_probs_current, model_record_current = solver_current.solve()
-    print(f"Current system probabilities: {choices} -> {final_probs_current}")
-    
-    return true_response, final_probs_current
+    print(f"Current system probabilities:\n\tChoices: {choices}\n\tProbabilities: {final_probs_current}")
+    return target_v, final_probs_current
 
 if __name__ == "__main__":
-    true_response, current_probs = test_response_prediction()
+    true_response, current_probs = test_p_v_given_x()
     print(f"\nTrue response: {true_response}")
     print(f"Current system prediction: {current_probs}")
