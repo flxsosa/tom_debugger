@@ -90,10 +90,8 @@ def generate_hypo_belief_of_state(s, c, llm):
     prompt = prompt_template.replace("[Information]", f"Information: {c_new}")
     prompt = prompt.replace("[Given Sentence]", f"{s}")
     resp, cost = llm_request(prompt, temperature=0.0, hypo=True, model=llm)
-    print(prompt)
     # print('before handling', resp)
     resp_list = get_list_from_str(resp)
-    print("after converting", resp_list)
     return resp_list
 
 
@@ -182,9 +180,9 @@ def hypothesis_generation(
     llm,
     verbose=False,
     prev_hyp="",
-    dataset_name="",
+    eval_name="",
 ):
-    if element_name == "Belief" and "BigToM" in dataset_name:
+    if element_name == "Belief" and "BigToM" in eval_name:
         with open(
             f"prompts/prompts_{llm}/hypo_{element_name}_BigToM.txt",
             "r",
@@ -205,7 +203,7 @@ def hypothesis_generation(
     if K != 1:
         prompt = prompt.replace("[num]", f"{K}")
     else:
-        prompt = prompt.replace("[num]", f"one")
+        prompt = prompt.replace("[num]", "one")
         prompt = prompt.replace("hypotheses", "hypothesis")
         prompt = prompt.replace("Hypotheses", "Hypothesis")
         prompt = prompt.replace("align", "aligns")
@@ -229,15 +227,11 @@ def hypothesis_generation(
         for i in range(K):
             resp = resp.replace(f"Hypothesis_{i+1}: ", "")
         resp_list[j] = resp
-    # print(resp_list)
-    # print(res)
-    if verbose:
-        enh_print(f"Hypotheses proposed for {element_name}\n{resp_list}")
     return resp_list
 
 
-def extraction(story, character, element_name, llm, dataset_name, choices=None):
-    if "BigToM" in dataset_name and element_name in [
+def extraction(story, character, element_name, llm, eval_name, choices=None):
+    if "BigToM" in eval_name and element_name in [
         "Observation",
         "State",
         "Action",
@@ -259,7 +253,7 @@ def extraction(story, character, element_name, llm, dataset_name, choices=None):
 
             # Observation Present: See if there are more details needed for the observation
             if (
-                "BigToM" in dataset_name
+                "BigToM" in eval_name
                 and element_name in ["Observation"]
                 and resp not in ['["A", ""]', '["B", ""]']
             ):
@@ -291,7 +285,7 @@ def extraction(story, character, element_name, llm, dataset_name, choices=None):
         except FileNotFoundError:
             return ["B", ""]
     prompt = prompt_template.replace("[Story]", f"Story: {story}")
-    if "BigToM" in dataset_name and element_name in ["Goal"]:
+    if "BigToM" in eval_name and element_name in ["Goal"]:
         prompt = prompt.replace("[Information]", f"{choices}")
     prompt = prompt.replace("[Character]", f"{character}")
     resp, cost = llm_request(prompt, temperature=0.0, model=llm)
@@ -300,12 +294,12 @@ def extraction(story, character, element_name, llm, dataset_name, choices=None):
         resp = eval(resp)
 
         if (
-            "BigToM" in dataset_name and element_name in ["Observation", "State"]
+            "BigToM" in eval_name and element_name in ["Observation", "State"]
         ) and resp == ["A", ""]:
             resp = ["B", ""]
             return resp
         if (
-            "BigToM" in dataset_name
+            "BigToM" in eval_name
             and element_name not in ["State"]
             and resp != ["B", ""]
         ):
@@ -371,12 +365,27 @@ def verify_variable(infer_variable, sentence):
     return resp
 
 
-def get_inf_var(question, choices, model, llm, dataset_name):
-    if "belief_of_goal" in dataset_name:
+def get_inf_var(question, choices, model, llm, eval_name):
+    """
+    Determine the variable to infer from the choices.
+
+    Choices are assumed to be in full sentence form so they can be used to
+    infer the variable.
+
+    Args:
+        question: The question being solved from a specific eval.
+        choices: The choices to infer the variable from (full sentences).
+        model: The model to infer the variable from.
+        llm: The language model to use for inference.
+        eval_name: The name of the dataset being solved.
+    Returns:
+        str: The variable to infer from the choices.
+    """
+    if "belief_of_goal" in eval_name:
         return "Belief of Goal"
-    if "_belief" in dataset_name[-6:]:
+    if "_belief" in eval_name[-6:]:
         return "Belief"
-    if "_goal" in dataset_name[-5:]:
+    if "_goal" in eval_name[-5:]:
         return "Goal"
     with open(
         f"prompts/prompts_{llm}/find_Inferred_Var.txt", "r", encoding="utf-8"
@@ -391,14 +400,12 @@ def get_inf_var(question, choices, model, llm, dataset_name):
     variables = ", ".join(variables)
     variables += "."
     prompt = prompt.replace("[Variables]", variables)
-    # print(prompt)
     resp, cost = llm_request(prompt, temperature=0.0, model=llm)
-    # print(resp)
     resp = resp.replace(".", "")
     return resp
 
 
-def get_info_from_question(question, llm, dataset_name):
+def get_info_from_question(question, llm, eval_name):
 
     with open(
         f"prompts/prompts_{llm}/get_info_from_question.txt", "r", encoding="utf-8"
@@ -457,7 +464,7 @@ def mmtom_get_variables(
     hypo_llm,
     verbose,
     hypo_method,
-    dataset_name,
+    eval_name,
     full,
     init_state="NONE",
     states=None,
@@ -721,7 +728,7 @@ def get_variables_at_time(
     preproposed_ob_hypos,
     last_state,
     inf_agent_action,
-    dataset_name,
+    eval_name,
     precomputed_states,
 ):
     now_story = vals["Chunk"]
@@ -834,7 +841,7 @@ def get_variables_with_time(
     hypo_llm,
     verbose,
     hypo_method,
-    dataset_name,
+    eval_name,
     full,
     init_state="NONE",
     prev_hyp="",
@@ -842,7 +849,7 @@ def get_variables_with_time(
     actions=None,
     question=None,
 ):
-    if "MMToM" in dataset_name:
+    if "MMToM" in eval_name:
         time_variables = mmtom_get_variables(
             val_with_time,
             variable_types,
@@ -855,7 +862,7 @@ def get_variables_with_time(
             hypo_llm,
             verbose,
             hypo_method,
-            dataset_name,
+            eval_name,
             full,
             init_state,
             states,
@@ -863,32 +870,28 @@ def get_variables_with_time(
             question,
         )
         return time_variables
-
     res = []
     now_story = ""
     last_state = init_state
     known_Goal = "NONE"
     inf_agent_action = "NONE"
-
     entire_story = ""
     if isinstance(val_with_time, tuple):
         val_with_time, _ = val_with_time
     for vals in val_with_time:
         entire_story += vals["Chunk"]
-
     preproposed_ob_hypos = []
     for i, vals in enumerate(val_with_time):
         now_story += vals["Chunk"]
         var_dict = {}
-
         for var_type in variable_types:
             if var_type[1] == "State":
                 now_state = deepcopy(last_state)
                 now_state = update_state(
-                    now_state, inf_agent_action, llm, verbose, dataset_name
+                    now_state, inf_agent_action, llm, verbose, eval_name
                 )
                 now_state = update_state(
-                    now_state, vals["State"], llm, verbose, dataset_name
+                    now_state, vals["State"], llm, verbose, eval_name
                 )
                 # The effect of inf_agent_action is delayed to next timestep (A_t takes place after S_t)
                 actions_without_inf_agent, inf_agent_action = (
@@ -896,7 +899,7 @@ def get_variables_with_time(
                 )
 
                 now_state = update_state(
-                    now_state, actions_without_inf_agent, llm, verbose, dataset_name
+                    now_state, actions_without_inf_agent, llm, verbose, eval_name
                 )
                 last_state = deepcopy(now_state)
                 var_dict["State"] = Variable(
@@ -965,7 +968,7 @@ def get_variables_with_time(
                     var_type[1] == "Observation"
                 ):  # also change the way we propose hyp for belief
                     if len(preproposed_ob_hypos) == 0:
-                        if var_type[1] == "Belief" and "BigToM" in dataset_name:
+                        if var_type[1] == "Belief" and "BigToM" in eval_name:
                             preproposed_ob_hypos += hypothesis_generation(
                                 [],
                                 choices,
@@ -975,7 +978,7 @@ def get_variables_with_time(
                                 K,
                                 hypo_llm,
                                 prev_hyp,
-                                dataset_name,
+                                eval_name,
                             )
                         else:
                             for c in choices:
@@ -988,7 +991,7 @@ def get_variables_with_time(
                                     1,
                                     hypo_llm,
                                     prev_hyp,
-                                    dataset_name,
+                                    eval_name,
                                 )
                             if prev_hyp in preproposed_ob_hypos:
                                 preproposed_ob_hypos.remove(prev_hyp)
@@ -1011,7 +1014,7 @@ def get_variables_with_time(
                     )
                     continue
                 else:
-                    if var_type[1] == "Belief" and "BigToM" in dataset_name:
+                    if var_type[1] == "Belief" and "BigToM" in eval_name:
                         hypo_c = []
                         hypo_c += hypothesis_generation(
                             [],
@@ -1021,7 +1024,7 @@ def get_variables_with_time(
                             var_type[1],
                             K,
                             hypo_llm,
-                            dataset_name,
+                            eval_name,
                         )
                     else:
                         hypo_c = []
@@ -1035,7 +1038,7 @@ def get_variables_with_time(
                                 var_type[1],
                                 1,
                                 hypo_llm,
-                                dataset_name,
+                                eval_name,
                             )
                     hypos = hypo_c
                 var_dict[var_name] = Variable(
@@ -1096,7 +1099,7 @@ def save_belief_probs(probs, model_name, episode_name):
         writer.writeheader()
         for prob in probs:
             writer.writerow(prob)
-    print(f"Probs results saved to {output_file}")
+    # print(f"Probs results saved to {output_file}")
 
 
 def save_metrics(metrics, model_name, episode_name, back_inference, reduce_hypos):
@@ -1124,6 +1127,18 @@ def save_node_results(
     back_inference,
     red_obs_hypo,
 ):
+    """
+    NOTE: Nodes are the following format:
+
+    node = {
+            "Time": i,
+            "Node": node_name,
+            "Parent node": parents_node_name,
+            "Likelihood": logits,
+            "Node value": node_value,
+            "Parent node value": parents_node_value,
+        }
+    """
     output_folder = "../results/node_results"
     output_file = f"{output_folder}/{model_name}_{episode_name}_back{int(back_inference)}_reduce{int(red_obs_hypo)}.csv"
 
@@ -1136,14 +1151,14 @@ def save_node_results(
         writer.writeheader()
         for node in node_results:
             writer.writerow(node)
-    print(f"Node results saved to {output_file}")
+    # print(f"Node results saved to {output_file}")
 
 
 def save_intermediate_probs(individual_likelihoods, model_name, episode_name):
     output_folder = "../results/intermediate_probs"
     output_file = f"{output_folder}/{model_name}_{episode_name}.csv"
     os.makedirs(output_folder, exist_ok=True)
-    print(individual_likelihoods)
+    # print(individual_likelihoods)
 
     # Prepare data for CSV
     rows = [[key[0], key[1], value] for key, value in individual_likelihoods.items()]
@@ -1156,7 +1171,7 @@ def save_intermediate_probs(individual_likelihoods, model_name, episode_name):
         # Write rows
         writer.writerows(rows)
 
-    print(f"Saved intermediate probabilities to {output_file}")
+    # print(f"Saved intermediate probabilities to {output_file}")
 
 
 def save_ipomdp_intermediate_story(story, question, choice, model_name, episode_name):
@@ -1174,8 +1189,8 @@ def save_ipomdp_intermediate_story(story, question, choice, model_name, episode_
         writer.writerow(res_dict)
 
 
-def load_estimation_dict(dataset_name):
-    file_name = f"../results/estimation_dicts/{dataset_name}.json"
+def load_estimation_dict(eval_name):
+    file_name = f"../results/estimation_dicts/{eval_name}.json"
     if not os.path.isfile(file_name):
         return {}
     with open(file_name, mode="r") as file:
@@ -1183,10 +1198,10 @@ def load_estimation_dict(dataset_name):
     return res
 
 
-def save_estimation_dict(dataset_name, dict):
+def save_estimation_dict(eval_name, dict):
     folder = "../results/estimation_dicts/"
     os.makedirs(folder, exist_ok=True)
-    file_name = f"../results/estimation_dicts/{dataset_name}.json"
+    file_name = f"../results/estimation_dicts/{eval_name}.json"
     with open(file_name, mode="w") as file:
         json.dump(dict, file, indent=2)
 
@@ -1259,12 +1274,12 @@ def load_node_results(episode_name, back_inference, red_obs_hypo):
     return dicts
 
 
-def get_variables(story, character, var_name_list, K, inf_var_name, llm, dataset_name):
+def get_variables(story, character, var_name_list, K, inf_var_name, llm, eval_name):
     var_list = []
     for var_name in var_name_list:
         if var_name == inf_var_name:
             continue
-        resp = extraction(story, character, var_name, llm, dataset_name)
+        resp = extraction(story, character, var_name, llm, eval_name)
         hypos, val = None, None
         if "B) Not clearly stated" in resp:
             hypos = hypothesis_generation(story, var_name, K=K, llm=llm)
@@ -1294,7 +1309,7 @@ def get_variables(story, character, var_name_list, K, inf_var_name, llm, dataset
     return var_list
 
 
-def update_state(old_state, change, llm, verbose, dataset_name):
+def update_state(old_state, change, llm, verbose, eval_name):
     change = change.strip()
     if change == "NONE" or change == "":
         return old_state
@@ -1327,7 +1342,7 @@ def save_hypos(hypos, model_name, episode_name):
     os.makedirs(output_folder, exist_ok=True)
     with open(output_file, mode="w", newline="") as file:
         json.dump(hypos, file)
-    print(f"Hypos results saved to {output_file}")
+    # print(f"Hypos results saved to {output_file}")
 
 
 def get_answer_from_state(state, choices, llm):
@@ -1355,7 +1370,17 @@ def get_answer_memory_questions(story, question, choices, llm):
     return probs, {}
 
 
-def split_sentences(story, llm):
+def split_story_sentences(story, llm):
+    """
+    Splits the story into multiple sentences.
+
+    This is to make the story text more natural/narrative for the LMs. Uses
+    an LLM to split the story into multiple sentences.
+
+    Example:
+        Input: "A and B entered the room."
+        Output: "A entered the room. B entered the room."
+    """
     with open(
         f"prompts/prompts_{llm}/split_sentences.txt", "r", encoding="utf-8"
     ) as prompt_file:
@@ -1363,57 +1388,3 @@ def split_sentences(story, llm):
     prompt = prompt_template.replace("[Story]", f"Story: {story}")
     resp, cost = llm_request(prompt, temperature=0.0, model=llm)
     return resp
-
-
-if __name__ == "__main__":
-    # get_context(
-    #     "Aisha is a beekeeper in a small village near the Sahara Desert. The beehives appear to be full of honey and ready for harvest. Aisha is out of town and does not see the sand-filled beehives after the sandstorm the next day after she returns."
-    # )
-    # get_inf_var("If his goal was to hinder alice, what is his belief?")
-    # get_info_from_question("Which one of the following statements is more likely to be true?")
-    # get_variables(
-    # update_state(
-    #     "The peach is in the envelope.", "Amelia entered the garden.", "gpt-4o"
-    # )
-    #     story="""Angela has a phobia of bees, and she gets very nervous when there are bees flying around. Today, I gifted her a bottle of honey.""",
-    # var_name_list=["Observation", "State", "Belief", "Goal", "Action", "Emotion"]
-    # )
-
-    # entire_story = "Imagine that you are in the perspective of David in a world where their action and potentially other people's actions in the physical state of the world are described as Context: What's inside the apartment: The apartment consists of a bedroom, kitchen, living room, and bathroom.  In the bedroom, there is a cabinet, coffee table, desk, and sofa. The cabinet houses a bag of chips, a wine glass, and two books, while the sofa holds a bag of chips and a book.  The kitchen is equipped with a dishwasher, eight cabinets, a kitchen table, a fridge, a microwave, and a stove. Inside the dishwasher, there are two wine glasses and a water glass. The first, second, third, fourth, and fifth cabinets from left to right are empty, while the sixth cabinet contains an apple. The seventh cabinet has a wine glass, and the eighth cabinet is also empty. The kitchen table is adorned with a book, a dish bowl, a plate, a condiment bottle, and a salmon. The fridge contains a bottle of wine, an apple, and a salmon. The microwave houses a condiment bottle, a cupcake, and a plate, and there is a plate inside the stove.  The living room features a coffee table, a sofa, and a desk. On the coffee table, there is a wine glass, a plate, and two remote controls, and a book is placed on the sofa.  The bathroom is fitted with a cabinet, which is currently empty.  Actions taken by David: David is situated in the bedroom. David proceeds towards the kitchen.David approaches the second kitchen cabinet.David opens the second kitchen cabinet.David closes the second kitchen cabinet.David opens the first kitchen cabinet.David closes the first kitchen cabinet.as well. David moves towards the dishwasher.David opens the dishwasher.David shuts the dishwasher.David opens the sixth kitchen cabinet.David closes the sixth kitchen cabinet.David walks towards the stove.David opens the stove.David closes the stove.David opens the fifth kitchen cabinet.David closes the fifth kitchen cabinet.David returns to the bedroom.David approaches a cabinet in the bedroom.David opens the cabinet in the bedroom.David closes the cabinet in the bedroom.David heads back to the kitchen.David walks towards the third kitchen cabinet.David opens the third kitchen cabinet.David closes the third kitchen cabinet.David proceeds towards the eighth kitchen cabinet. David has been trying to get a bottle of wine.NONE."
-    # story = "What's inside the apartment: The apartment consists of a bedroom, kitchen, living room, and bathroom.  In the bedroom, there is a cabinet, coffee table, desk, and sofa. The cabinet houses a bag of chips, a wine glass, and two books, while the sofa holds a bag of chips and a book.  The kitchen is equipped with a dishwasher, eight cabinets, a kitchen table, a fridge, a microwave, and a stove. Inside the dishwasher, there are two wine glasses and a water glass. The first, second, third, fourth, and fifth cabinets from left to right are empty, while the sixth cabinet contains an apple. The seventh cabinet has a wine glass, and the eighth cabinet is also empty. The kitchen table is adorned with a book, a dish bowl, a plate, a condiment bottle, and a salmon. The fridge contains a bottle of wine, an apple, and a salmon. The microwave houses a condiment bottle, a cupcake, and a plate, and there is a plate inside the stove.  The living room features a coffee table, a sofa, and a desk. On the coffee table, there is a wine glass, a plate, and two remote controls, and a book is placed on the sofa.  The bathroom is fitted with a cabinet, which is currently empty.  Actions taken by David: The stove is closed."
-    # character = "David"
-
-    # entire_story = """ 1 Jack entered the bathroom.
-    # 2 Logan entered the bathroom.
-    # 3 Jack hates the asparagus.
-    # 4 The celery is in the pantry.
-    # 5 The pantry is in the bathroom.
-    # 6 Olivia entered the bathroom.
-    # 7 Logan moved the celery to the crate.
-    # 8 The crate is in the bathroom.
-    # 9 Jack exited the bathroom.
-    # 10 Logan exited the bathroom.
-    # 11 Jack hates the orange.
-    # 12 Jack entered the bathroom. """
-    # story = "Jack entered the bathroom.2 Logan entered the bathroom. 3 Jack hates the asparagus. 4 The celery is in the pantry. 5 The pantry is in the bathroom. 6 Olivia entered the bathroom. 7 Logan moved the celery to the crate. 8 The crate is in the bathroom. "
-    # character = "Jack"
-
-    # K = 2
-    llm = "gpt-4o"
-    # obs = hypothesis_generation_observation_inf_wrld_rules(
-    #     entire_story, story, character, K, llm
-    # )
-    # print(obs)
-
-    story = "Aniket is a marine biologist studying coral reefs off the coast of India. Aniket needs to collect samples of coral to analyze the effects of climate change on the reef. Aniket spots a healthy-looking coral formation in a specific area of the reef. A sudden wave surge stirs up sediment  covering the once healthy coral formation and causing it to become damaged. Aniket notices the wave surge and the sediment covering the coral."
-    character = "Aniket"
-    var_name_list = "Be"
-    K = 2
-    inf_var_name = "Belief"
-    dataset_name = "BigToM"
-    info = "Aniket sees that there is another healthy coral formation.', 'Aniket sees that he found a healthy coral formation.'"
-    # "Aniket will find another healthy coral formation to collect samples.; Aniket will collect samples from the healthy coral formation he found."
-    vars = hypothesis_generation(
-        "", info, story, character, inf_var_name, K, llm, dataset_name
-    )
-    print(vars)

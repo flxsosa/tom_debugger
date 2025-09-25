@@ -1,0 +1,18 @@
+# Current TODO
+- [ ] Determine what analyses to perform for model comparisons
+    - [ ] $P_{\text{Tomauto}}(R|X) \times P_{LM}(R|X)$
+- [ ] Determine what ProbSolver.solve() should return for analyses
+- [ ] Set up cluster jobscripts for running Tomauto on the ToMi full evaluation on the following LM families
+    - [ ] Qwen (!)
+    - [ ] Llama (!)
+    - [ ] Olmo (!)
+    - [ ] GPT (!)
+    - [ ] Gemma (!)
+    - [ ] Gemini
+    - [ ] Claude
+- [ ] Collect and analyze the return data from the ToMi full evaluation runs
+- [ ] Ablation studies
+    - [ ] Fitting Tomauto $(P(V | R, X) \propto P(R | V, X)P(V | X)) to log-probs vs sampled behavior
+    - [ ] Compare Tomauto with host LM from the above LM families
+- [ ] Human study
+    - [ ] Re-run ToM evaluation(s) of choice (e.g. ToMi), show failure cases to people, ask them to generate an explanation of the failure (ideally through the model space of V), determine whether P(V|R,X) matches human-generated failure explanations

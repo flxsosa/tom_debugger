@@ -1,9 +1,10 @@
-from utils import llm_request
+import os
 import csv
+from copy import deepcopy
+
+from utils import llm_request
 from ElementExtractor import *
 from DataLoader import *
-import os
-from copy import deepcopy
 
 
 class TimeLine:
@@ -19,6 +20,18 @@ class TimeLine:
         llm,
         dataset_name,
     ):
+        """
+        Args:
+            story: The narrative text containing the scenario
+            question: The question to be answered
+            choices: Possible answer choices
+            variable_names: Which mental state variables to extract (e.g., ['State', 'Belief', 'Action'])
+            model_name: Model identifier for caching
+            episode_name: Unique identifier for this problem instance
+            inf_var: The variable to infer (e.g., 'Belief', 'Goal')
+            llm: Language model for extraction
+            dataset_name: Dataset identifier
+        """
         self.variable_names = deepcopy(variable_names)
         self.story = story
         self.agents = None
@@ -26,7 +39,6 @@ class TimeLine:
         self.inferred_agent = None
         self.choices = choices
         self.question = question
-
         self.inf_var = inf_var
         self.model_name = model_name
         self.episode_name = episode_name
@@ -67,7 +79,8 @@ class TimeLine:
             ) as prompt_file:
                 prompt_template = prompt_file.read().strip()
             prompt = prompt_template.replace("[Story]", f"Story: {self.story}")
-            prompt = prompt.replace("[Inferred_agent]", f"{self.inferred_agent}")
+            prompt = prompt.replace(
+                "[Inferred_agent]", f"{self.inferred_agent}")
             resp, cost = llm_request(prompt, temperature=0.0, model=self.llm)
             action_sequence = get_list_from_str(resp)
         # No actions in the story
@@ -84,11 +97,12 @@ class TimeLine:
             ) as prompt_file:
                 prompt_template = prompt_file.read().strip()
             prompt = prompt_template.replace("[Story]", f"Story: {self.story}")
-            prompt = prompt.replace("[Inferred_agent]", f"{self.inferred_agent}")
+            prompt = prompt.replace(
+                "[Inferred_agent]", f"{self.inferred_agent}")
             prompt = prompt.replace("[bare_actions]", f"{action_sequence}")
             resp, cost = llm_request(prompt, temperature=0.0, model=self.llm)
             action_sequence_wording = get_list_from_str(resp)
-            print(action_sequence_wording)
+            # print(action_sequence_wording)
             if "BigToM" not in self.dataset_name:
                 for i, act in enumerate(action_sequence_wording):
                     with open(

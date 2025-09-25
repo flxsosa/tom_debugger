@@ -113,23 +113,23 @@ def gpt_request_multimodal(
         if hypo:
             cost_of_proposing_hypotheses += cost
             times_of_proposing_hypotheses += 1
-            if times_of_proposing_hypotheses % 10 == 0:
-                enh_print(
-                    f"Accumulated Cost of Proposing Hypotheses: {cost_of_proposing_hypotheses} in {times_of_proposing_hypotheses} times",
-                    "red",
-                )
+            # if times_of_proposing_hypotheses % 10 == 0:
+            #     enh_print(
+            #         f"Accumulated Cost of Proposing Hypotheses: {cost_of_proposing_hypotheses} in {times_of_proposing_hypotheses} times",
+            #         "red",
+            #     )
         else:
             cost_of_information_extracting += cost
             times_of_information_extracting += 1
-            if times_of_information_extracting % 10 == 0:
-                enh_print(
-                    f"Accumulated Cost of Extracting Information: {cost_of_information_extracting} in {times_of_information_extracting} times",
-                    "red",
-                )
+            # if times_of_information_extracting % 10 == 0:
+            #     enh_print(
+            #         f"Accumulated Cost of Extracting Information: {cost_of_information_extracting} in {times_of_information_extracting} times",
+            #         "red",
+            #     )
         # if verbose:
-        enh_print(prompt)
-        enh_print(response.choices[0].message.content.strip(), color="red")
-        enh_print(f"cost: {cost}", color="red")
+        # enh_print(prompt)
+        # enh_print(response.choices[0].message.content.strip(), color="red")
+        # enh_print(f"cost: {cost}", color="red")
         return response.choices[0].message.content.strip(), cost
     except Exception as e:
         print("An error occurred:", e)
@@ -249,19 +249,19 @@ def gpt_request(
         if hypo:
             cost_of_proposing_hypotheses += cost
             times_of_proposing_hypotheses += 1
-            if times_of_proposing_hypotheses % 10 == 0:
-                enh_print(
-                    f"Accumulated Cost of Proposing Hypotheses: {cost_of_proposing_hypotheses} in {times_of_proposing_hypotheses} times",
-                    "red",
-                )
+            # if times_of_proposing_hypotheses % 10 == 0:
+            #     enh_print(
+            #         f"Accumulated Cost of Proposing Hypotheses: {cost_of_proposing_hypotheses} in {times_of_proposing_hypotheses} times",
+            #         "red",
+            #     )
         else:
             cost_of_information_extracting += cost
             times_of_information_extracting += 1
-            if times_of_information_extracting % 10 == 0:
-                enh_print(
-                    f"Accumulated Cost of Extracting Information: {cost_of_information_extracting} in {times_of_information_extracting} times",
-                    "red",
-                )
+            # if times_of_information_extracting % 10 == 0:
+            #     enh_print(
+            #         f"Accumulated Cost of Extracting Information: {cost_of_information_extracting} in {times_of_information_extracting} times",
+            #         "red",
+                # )
         if logprobs:
             response_json_str = response.model_dump_json(indent=2)
             response_dict = json.loads(response_json_str)
@@ -372,7 +372,7 @@ Question: {question}
         cost = usage.prompt_tokens * inp + usage.completion_tokens * op
 
         accumulated_cost_logits += cost
-        print("accumulated cost: ", accumulated_cost_logits)
+        # print("accumulated cost: ", accumulated_cost_logits)
 
         for it in logprobs:
             for c in letter_choices:
@@ -397,9 +397,9 @@ def contains_utterance(self, data_list_1, data_list_2):
 
 def check_nested(self):
     # Safety check. If not satisfied, it is classified as incorrect.
-    nested_dataset = "2nd" in self.dataset_name
-    if "HiToM" in self.dataset_name:
-        order = int(self.dataset_name.split("order")[1])
+    nested_dataset = "2nd" in self.eval_name
+    if "HiToM" in self.eval_name:
+        order = int(self.eval_name.split("order")[1])
         if order > 1:
             nested_dataset = True
     if self.nested == True and not nested_dataset:
@@ -434,7 +434,17 @@ def rephrase_choices_wording(c, story, llm):
     return resp
 
 
-def rephrase_choices(question, choices, llm, wording=False):
+def rephrase_choices(question, choices, llm):
+    """
+    Rephrases the choices into full sentences to make them more clear for LMs.
+
+    Uses an LLM to rephrase the choices.
+
+    Example:
+        Input: "Where is the apple?" 
+            Choices: ["in the fridge", "in the kitchen"]
+        Output: ["The apple is in the fridge.", "The apple is in the kitchen."]
+    """
     with open(
         f"prompts/prompts_{llm}/rephrase_choices.txt", "r", encoding="utf-8"
     ) as prompt_file:
@@ -447,7 +457,6 @@ def rephrase_choices(question, choices, llm, wording=False):
     resp = resp.strip()
     try:
         from ast import literal_eval
-
         return literal_eval(resp)
     except (ValueError, SyntaxError) as e:
         # If direct eval fails, try cleaning the string
@@ -523,7 +532,7 @@ def find_nested_agent_list(question, choices, llm):
     return [first_agent] + oa
 
 
-def reconstruct_story_nested(story, agent, llm, dataset_name):
+def reconstruct_story_nested(story, agent, llm, eval_name):
     parsed_story = story.split(".")
     ret = []
     vis = []
@@ -533,14 +542,14 @@ def reconstruct_story_nested(story, agent, llm, dataset_name):
             continue
         sentence = sentence + "."
         rec = ""
-        if rephrase_story_nested_single(story, agent, sentence, llm, dataset_name):
+        if rephrase_story_nested_single(story, agent, sentence, llm, eval_name):
             ret.append(sentence)
             rec = sentence
         vis.append({"Original story": sentence, "Reconstructed story": rec})
     return ret, vis
 
 
-def rephrase_story_nested_single(story, agent, sentence, llm, dataset_name):
+def rephrase_story_nested_single(story, agent, sentence, llm, eval_name):
     with open(
         f"prompts/prompts_{llm}/rephrase_story_nested_single.txt", "r", encoding="utf-8"
     ) as prompt_file:
@@ -548,7 +557,7 @@ def rephrase_story_nested_single(story, agent, sentence, llm, dataset_name):
     prompt = prompt_template.replace("[Story]", f"Story: {story}")
     prompt = prompt.replace("[Agent]", agent)
     prompt = prompt.replace("[Sentence]", f"{sentence}")
-    if "HiToM" in dataset_name:
+    if "HiToM" in eval_name:
         if (
             "enter" in sentence or "exit" in sentence
         ):  # To represent initial state in HiToM, and HiToM assume the order of agents leaving is known
@@ -562,7 +571,7 @@ def rephrase_story_nested_single(story, agent, sentence, llm, dataset_name):
         return True
 
 
-def rephrase_question_nested(question, agent, llm, dataset_name):
+def rephrase_question_nested(question, agent, llm, eval_name):
     # This function gives ground truth rephrased question in ToMi-2nd and Hi-ToM.
     # For more open-ended scenarios, replace this function with LLMs.
     if "thinks" in question:
@@ -605,9 +614,12 @@ def correct_visual_actions(action, choices, llm):
     return resp
 
 
-def get_rid_of_number_starts(story):
-    # Getting rid of number starts, and underscores to obtain a more natural story illustration
-    # print(story, f'{1} ')
+def remove_story_prefixes(story):
+    """
+    Removes numerical prefixes and underscore characters from story text.
+
+    This is to make the story text more natural/narrative for the LMs.
+    """
     for i in range(30, 0, -1):
         story = story.replace(f"{i} ", "")
     story = story.replace("_", " ")

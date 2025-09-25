@@ -5,13 +5,19 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "dcor>=0.6",
+    "dotenv>=0.9.9",
+    "networkx>=3.5",
     "numpy>=2.3.3",
     "openai>=1.107.1",
     "opencv-python>=4.11.0.86",
     "pandas>=2.3.2",
     "pillow>=11.3.0",
     "pip>=25.2",
+    "pymc>=5.25.1",
     "scipy>=1.16.2",
+    "seaborn>=0.13.2",
+    "termcolor>=3.1.0",
     "torch>=2.8.0",
     "transformers>=4.56.1",
 ]

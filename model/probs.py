@@ -177,6 +177,29 @@ def get_likelihood_general(
         A) Likely.
         B) Unlikely."""
 
+    # P(Response | Belief, Goal, Query)
+    elif "Response" in variable:
+        # print(f"Information passed to Response variable:\n\t{info}")
+        prompt = (
+            f"Determine if the response choice is likely, respond with only either A or B.\n"
+            f"Story Context: {info}\n"  # This contains Belief, Goal, Utterance info
+            f"Question: {statement}\n"  # This is the query (q)
+            f"Given the story context and the character's mental state (belief and goal), "
+            f"determine how likely it is that an external agent (LLM or human) would "
+            f"choose this answer when asked about the character's behavior.\n"
+            f"An external agent would likely choose answers that align with:\n"
+            f"1. What they understand about the character's mental state\n"
+            f"2. The observable events they can see in the story\n"
+            f"3. The logical implications of the story context\n"
+            f"If the character's belief and observable events suggest a particular "
+            f"answer is correct, an external agent is likely to choose that answer.\n"
+            f"If the character's belief or observable events contradict an answer choice, "
+            f"an external agent is unlikely to choose that answer.\n"
+            f"Determine if this response choice is likely.\n"
+            f"A) Likely.\n"
+            f"B) Unlikely."
+        )
+
     else:
         prompt = f"""Determine if the statement is likely, respond with only either A or B.  If it's not certain but it's possible, it's considered likely. If it contradicts to the given information in some way, then it is unlikely. 
         {info}
@@ -206,17 +229,10 @@ def get_likelihood_general(
             inp, op = 5 / 1000000, 15 / 1000000
         elif model == "gpt-3.5-turbo":
             inp, op = 0.5 / 1000000, 1.5 / 1000000
-
         usage = response.usage
         cost = usage.prompt_tokens * inp + usage.completion_tokens * op
         COST_OF_EST_LKLD += cost
         TIMES_OF_EST += 1
-        if TIMES_OF_EST % 10 == 0:
-            utils.enh_print(
-                f"Accumulated Cost of Estimating Likelihood: {COST_OF_EST_LKLD} in {TIMES_OF_EST} times",
-                "red",
-            )
-
         response_json_str = response.model_dump_json(indent=2)
         response_dict = json.loads(response_json_str)
         logprob_a = None
@@ -238,11 +254,11 @@ def get_likelihood_general(
                     f"Encountering None values in prob_a!!\n\n{prompt}\n\n{response_dict}"
                 )
             return 0.1
-        if prob_a < 0.03:
-            prob_a = 0.03
-        if prob_a > 0.97:
-            prob_a = 1.0
         # clip the values
+        if prob_a < 0.01:
+            prob_a = 0.01
+        if prob_a > 0.99:
+            prob_a = 0.99
         if action_exponent is not None and "Action" in variable:
             return math.pow(prob_a, action_exponent)
         if verbose:
@@ -294,6 +310,6 @@ def llama_likelihood_request(
     else:
         prob_a_normalized = prob_a_unnormalized / denominator
 
-    print("No cost: using GPU with opensource LLM")
-    print(prompt, "\n", prob_a_normalized)
+    # print("No cost: using GPU with opensource LLM")
+    # print(prompt, "\n", prob_a_normalized)
     return prob_a_normalized

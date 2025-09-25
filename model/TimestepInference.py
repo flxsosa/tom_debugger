@@ -1,3 +1,6 @@
+import numpy as np
+from copy import deepcopy
+
 from ElementExtractor import *
 from utils import *
 from BayesianInference import BayesianInferenceModel
@@ -5,7 +8,7 @@ from BayesianInference import BayesianInferenceModel
 def infer_belief_at_timestamp(
     self,
     time_variables,
-    i,
+    t,
     previous_belief,
     belief_name,
     variable_values_with_time,
@@ -17,7 +20,7 @@ def infer_belief_at_timestamp(
     # print(no_observation_hypothesis)
 
     if isinstance(time_variables, list):
-        var_i = time_variables[i]
+        var_i = time_variables[t]
     elif isinstance(time_variables, dict):  # variables at a specific timestep
         var_i = time_variables
     now_variables = []
@@ -30,7 +33,7 @@ def infer_belief_at_timestamp(
             now_variables.append(item)
     if belief_name in var_i:
         now_variables.append(var_i[belief_name])
-    if "BigToM" in self.dataset_name:
+    if "BigToM" in self.eval_name:
         context = self.story
     else:
         context = ""
@@ -42,7 +45,7 @@ def infer_belief_at_timestamp(
         inf_agent=self.inf_agent_name,
         model_name=self.model_name,
         episode_name=self.episode_name,
-        dataset_name=self.dataset_name,
+        eval_name=self.eval_name,
         K=self.K,
         answer_choices=self.choices,
         all_prob_estimations=all_prob_estimations,
@@ -54,21 +57,25 @@ def infer_belief_at_timestamp(
         results, all_prob_estimations, all_node_results = inference_model.infer("Belief", self.model_name, self.episode_name, self.init_belief)
     except Exception as e:
         print(f"Exception {e}")
-        return (Variable("Previous Belief", True, False, ["NONE"], np.ones(1)), all_prob_estimations, all_probs)
+        return (
+            Variable("Previous Belief", True, False, ["NONE"], np.ones(1)),
+            all_prob_estimations,
+            all_probs,
+        )
     
-    self.translate_and_add_node_results(self, i, all_node_results)
+    self.translate_and_add_node_results(self, t, all_node_results)
     previous_belief = deepcopy(var_i[belief_name])
     previous_belief.prior_probs = np.array(results)
     previous_belief.name = "Previous Belief"
     # if self.verbose:
-    enh_print(
-        f"After time {i}: Belief Probs Updated to {previous_belief.possible_values}, {results}"
-    )
+    # enh_print(
+    #     f"After time {i}: Belief Probs Updated to {previous_belief.possible_values}, {results}"
+    # )
     chunk = "NONE"
     if variable_values_with_time is None:
         chunk = "NONE"
-    elif i < len(variable_values_with_time) and "Chunk" in variable_values_with_time[i]:
-        chunk = variable_values_with_time[i]["Chunk"]
+    elif t < len(variable_values_with_time) and "Chunk" in variable_values_with_time[t]:
+        chunk = variable_values_with_time[t]["Chunk"]
     now_probs = {
         "Chunk": chunk,
         f"Probs({self.choices})": results,
@@ -80,36 +87,40 @@ def infer_belief_at_timestamp(
 def infer_last_timestamp(
     self,
     time_variables,
-    i,
+    t,
     inf_name,
     inf_var_name,
     now_variables,
     no_observation_hypothesis,
-    variable_values_with_time,
+    var_vals_with_time,
     all_probs,
     all_prob_estimations,
-):
-    # Last time stamp --> we want to infer the variable we are interested in with Bayesian Inference
+    ):
+    """
+    Infer the posterior over the variable of interest at the last timestamp.
+
+    This is the final output posterior of the inference engine P(V | X).
+
+    Args:
+        TODO: Add args
+    """
     if isinstance(time_variables, list):
-        var_i = time_variables[i]
-    elif isinstance(time_variables, dict):  # variables at a specific timestep
-        var_i = time_variables
-    for key, item in var_i.items():
+        variables_t = time_variables[t]
+    elif isinstance(time_variables, dict):
+        variables_t = time_variables
+    # Use relevant variables for inference (these are the latent variables)
+    for key, item in variables_t.items():
         if key != inf_name and key != "All Actions" and key != "Ground Truth State":
             if item != "NONE":
                 item.name = key
                 now_variables.append(item)
-
     try:
-        now_variables.append(var_i[inf_name])
+        now_variables.append(variables_t[inf_name])
     except Exception:
         print(f"No {inf_name}!")
         return None
-
-    if self.verbose:
-        print("chosen variables: \n\n\n", now_variables, "\n\n\n")
-
-    if "BigToM" in self.dataset_name:
+    print("chosen variables: \n\n\n", now_variables, "\n\n\n")
+    if "BigToM" in self.eval_name:
         context = self.story
     else:
         context = "" 
@@ -121,17 +132,16 @@ def infer_last_timestamp(
         inf_agent=self.inf_agent_name,
         model_name=self.model_name,
         episode_name=self.episode_name,
-        dataset_name=self.dataset_name,
+        eval_name=self.eval_name,
         K=self.K,
         answer_choices=self.choices,
         all_prob_estimations=all_prob_estimations,
         no_observation_hypothesis=no_observation_hypothesis,
         reduce_hypotheses=self.reduce_hypotheses,
     )
-
-    results, all_prob_estimations, all_node_results = inference_model.infer(inf_var_name, self.model_name, self.episode_name, self.init_belief)
-    self.translate_and_add_node_results(self, i, all_node_results)
-    
+    posterior, all_prob_estimations, all_node_results = inference_model.infer(
+        inf_var_name, self.model_name, self.episode_name, self.init_belief)
+    self.translate_and_add_node_results(self, t, all_node_results)
     save_node_results(
         self.intermediate_node_results,
         self.model_name,
@@ -139,18 +149,14 @@ def infer_last_timestamp(
         self.back_inference,
         self.reduce_hypotheses,
     )
-        
-    enh_print(
-        f"After time {i}: {inf_name} Probs calculated as {var_i[inf_name].possible_values}, {results}"
-    )
     chunk = "NONE"
-    if variable_values_with_time is None:
+    if var_vals_with_time is None:
         chunk = "NONE"
-    elif i < len(variable_values_with_time) and "Chunk" in variable_values_with_time[i]:
-        chunk = variable_values_with_time[i]["Chunk"]
+    elif t < len(var_vals_with_time) and "Chunk" in var_vals_with_time[t]:
+        chunk = var_vals_with_time[t]["Chunk"]
     now_probs = {
         "Chunk": chunk,
-        f"Probs({self.choices})": results,
+        f"Probs({self.choices})": posterior,
     }
     all_probs.append(now_probs)
-    return results, all_prob_estimations, all_probs
+    return posterior, all_prob_estimations, all_probs

@@ -71,13 +71,13 @@ class ProblemSolver:
         question,
         choices,
         K,
-        assigned_model=None,
+        model_graph=None,
         model_name="sobag",
         episode_name="",
         llm="gpt-4o",
         hypo_llm="gpt-4o",
         verbose=False,
-        dataset_name=None,
+        eval_name=None,
         hypo_method=None,
         nested=False,
         tab="",
@@ -94,6 +94,9 @@ class ProblemSolver:
         nested_timeline_before=None,
         nested_time_variables_before=None,
         init_belief=False,
+        compute_response=False,
+        observed_response_idx=None,
+        observed_response_probs=None
     ):
         """
         Initialize the ProblemSolver.
@@ -103,13 +106,13 @@ class ProblemSolver:
             question (str): The question to be answered about the story
             choices (list): List of possible answer choices
             K (int): Number of hypotheses to propose for each variable
-            assigned_model (list, optional): Predefined variables for manual mode
+            model_graph (list, optional): Predefined variables for manual mode
             model_name (str): Model type ("automated" or specific model name)
             episode_name (str): Unique identifier for this problem instance
             llm (str): Language model for inference tasks
             hypo_llm (str): Language model for hypothesis generation
             verbose (bool): Whether to print detailed progress information
-            dataset_name (str): Name of the dataset being processed
+            eval_name (str): Name of the dataset being processed
             hypo_method (str): Method for hypothesis generation
             nested (bool): Whether to use nested reasoning for higher-order ToM
             tab (str): Indentation string for nested output formatting
@@ -132,15 +135,18 @@ class ProblemSolver:
         self.question = question
         self.choices = choices
         self.K = K  # Number of hypotheses to propose for each variable
+        self.compute_response = compute_response
+        self.observed_response_idx = observed_response_idx
+        self.observed_response_probs = observed_response_probs
         
         # Model configuration
-        self.assigned_model = deepcopy(assigned_model)
+        self.model_graph = deepcopy(model_graph)
         self.llm = llm
         self.hypo_llm = hypo_llm
         self.model_name = model_name
         self.episode_name = episode_name
         self.verbose = verbose
-        self.dataset_name = dataset_name
+        self.eval_name = eval_name
         self.hypo_method = hypo_method
         
         # Agent and nested reasoning setup
@@ -229,7 +235,7 @@ class ProblemSolver:
         if self.model_name == "automated":
             var_types = self.ALL_VARIABLES  # Use all possible variables
         else:
-            var_types = self.assigned_model  # Use predefined variable set
+            var_types = self.model_graph  # Use predefined variable set
             
         # Step 2: Handle nested reasoning episode naming
         # For nested states, episodes at same timestep share timeline
@@ -249,7 +255,7 @@ class ProblemSolver:
             self.episode_name,
             self.inf_var_name,
             self.llm,
-            self.dataset_name,
+            self.eval_name,
         )
         
         # Load previously computed timeline if available
@@ -257,7 +263,7 @@ class ProblemSolver:
             self.model_name, self.episode_name
         )
         # Step 4: Extract timeline data if not already available
-        if "MMToM" not in self.dataset_name:
+        if "MMToM" not in self.eval_name:
             if variable_values_with_time is None:
                 if self.model_name == "automated":
                     # Try to load without reuse first
@@ -322,12 +328,12 @@ class ProblemSolver:
                 self.orig_story,
                 self.question,
                 self.orig_choices,
-                self.assigned_model,
+                self.model_graph,
                 self.model_name,
                 f"{self.episode_name}_ground_truth",
                 inf_var="Belief",
                 llm=self.llm,
-                dataset_name=self.dataset_name,
+                eval_name=self.eval_name,
             )
             
             # Load or extract ground truth timeline
@@ -359,7 +365,7 @@ class ProblemSolver:
 
         # Step 8: Prepare variable types for extraction
         variable_types = []
-        for var_name in self.assigned_model:
+        for var_name in self.model_graph:
             variable_types.append((self.inf_agent_name, var_name))
         variable_types.append(("", "All Actions"))
 
@@ -386,7 +392,7 @@ class ProblemSolver:
                 self.hypo_llm,
                 self.verbose,
                 self.hypo_method,
-                self.dataset_name,
+                self.eval_name,
                 self.full,
                 self.initial_state,
                 self.prev_hyp,
@@ -425,7 +431,7 @@ class ProblemSolver:
                         self.hypo_llm,
                         self.verbose,
                         self.hypo_method,
-                        self.dataset_name,
+                        self.eval_name,
                         self.full,
                         self.initial_state,
                     )
@@ -467,7 +473,7 @@ class ProblemSolver:
                     # Reconstruct story from current agent's perspective
                     self.first_agent_name = self.nested_agents_list[0]
                     self.story, vis = utils.reconstruct_story_nested(
-                        self.story, self.first_agent_name, self.llm, self.dataset_name
+                        self.story, self.first_agent_name, self.llm, self.eval_name
                     )
                     self.story = " ".join(self.story)
 
@@ -485,12 +491,12 @@ class ProblemSolver:
                             self.story,
                             self.question,
                             self.choices,
-                            self.assigned_model,
+                            self.model_graph,
                             self.model_name,
                             self.episode_name,
                             self.inf_var_name,
                             self.llm,
-                            self.dataset_name,
+                            self.eval_name,
                         ).extract(inferred_agent=self.nested_agents_list[-1])
                     )
                     
@@ -512,7 +518,7 @@ class ProblemSolver:
                                 self.hypo_llm,
                                 self.verbose,
                                 self.hypo_method,
-                                self.dataset_name,
+                                self.eval_name,
                                 self.full,
                                 self.initial_state,
                                 self.prev_hyp,
@@ -624,12 +630,12 @@ class ProblemSolver:
         )
         
         # Step 4: Initialize model tracking structures
-        assigned_models = {}  # Maps timestep to discovered model
+        model_graphs = {}  # Maps timestep to discovered model
         saved_model_variables = {}  # Maps timestep to saved variables
 
         # Step 5: Backward inference loop - start from final timestep
         for start_timestep in range(all_timesteps - 1, -1, -1):
-            print(f"Starting from timestep {start_timestep}")
+            # print(f"Starting from timestep {start_timestep}")
             
             # Step 6: Set up previous belief for current timestep
             if start_timestep > 0 and belief_name in time_variables[start_timestep - 1]:
@@ -649,10 +655,10 @@ class ProblemSolver:
             file_path = f"{output_folder}/automated_{self.episode_name}_back{int(self.back_inference)}_reduce{int(self.reduce_hypotheses)}.csv"
 
             # Step 8: Assign proposed model to current timestep
-            assigned_models[start_timestep] = proposed_model
+            model_graphs[start_timestep] = proposed_model
             
             # Step 9: Run model discovery for current timestep
-            results, terminate, assigned_models, saved_model_variables = (
+            results, terminate, model_graphs, saved_model_variables = (
                 model_adjustment.model_discovery(
                     start_timestep,
                     all_timesteps,
@@ -685,10 +691,10 @@ class ProblemSolver:
                     preproposed_ob_hypos,
                     last_state,
                     inf_agent_action,
-                    assigned_models,
+                    model_graphs,
                     file_path,
                     self.clear_current_nodes,
-                    self.dataset_name,
+                    self.eval_name,
                     self.states,
                     self.actions,
                     self.question,
@@ -696,6 +702,9 @@ class ProblemSolver:
                     saved_model_variables,
                     self.no_model_adjustment,
                     self,
+                    compute_response=self.compute_response,
+                    observed_response_idx=self.observed_response_idx,
+                    observed_response_probs=self.observed_response_probs
                 )
             )
             
@@ -703,17 +712,17 @@ class ProblemSolver:
             if terminate:
                 model_record = {
                     "Initial model propose": proposed_model,
-                    "Assigned models": assigned_models,
+                    "Assigned models": model_graphs,
                 }
-                print(model_record)
+                # print(model_record)
                 return results, model_record
 
         # Step 11: Return final results if no early termination
         model_record = {
             "Initial model propose": proposed_model,
-            "Assigned models": assigned_models,
+            "Assigned models": model_graphs,
         }
-        print(model_record)
+        # print(model_record)
         return results, model_record
 
     def solve(self):
@@ -743,7 +752,7 @@ class ProblemSolver:
             if self.nested is None:
                 self.nested = model_adjustment.determine_higher_order_belief(
                     self.story + self.question)
-                print("nested", self.nested)
+                # print("nested", self.nested)
                 if self.check_nested(self) is False:
                     return None, {}
                     
@@ -783,7 +792,7 @@ class ProblemSolver:
             "Previous Belief", True, False, ["None"], np.ones(1))
         all_probs = []
         self.estimation_dictionary = ElementExtractor.load_estimation_dict(
-            self.dataset_name)
+            self.eval_name)
         results = None
 
         # Step 8: Route to appropriate solving method
@@ -799,7 +808,7 @@ class ProblemSolver:
         else:
             # Step 9: Manual mode with predefined model - backward inference
             for start_timestep in range(all_timesteps - 1, -1, -1):
-                print(f"Starting from timestep {start_timestep}")
+                # print(f"Starting from timestep {start_timestep}")
                 belief_name = f"{self.inf_agent_name}'s Belief"
                 
                 # Step 10: Set up previous belief for current timestep
@@ -819,8 +828,8 @@ class ProblemSolver:
                     
                 # Step 11: Process each timestep from start to end
                 for i in range(start_timestep, all_timesteps):
-                    if self.verbose:
-                        print(f"------------- time stamp {i} -------------")
+                    # if self.verbose:
+                        # print(f"------------- time stamp {i} -------------")
                     time_variables[i]["Previous Belief"] = previous_belief
                     now_variables = []
                     inf_name = f"{self.inf_agent_name}'s {self.inf_var_name}"
@@ -881,8 +890,6 @@ class ProblemSolver:
                             )
                         )
 
-        return results, {}
-
 
 def main(args):
     """
@@ -894,10 +901,10 @@ def main(args):
 
     Args:
         args: Command line arguments containing:
-            - dataset_name (str): Name of the dataset (e.g. MMToM-QA, ToMi)
+            - eval_name (str): Name of the dataset (e.g. MMToM-QA, ToMi)
             - K (int): Number of hypotheses to propose for each variable
             - llm_model (str): Language model for inference and hypothesis generation
-            - assigned_model (list): Variables for manual mode Bayesian inference
+            - model_graph (list): Variables for manual mode Bayesian inference
             - automated (bool): Whether to use automated model discovery
             - back_inference (bool): Whether to use backward inference
             - reduce_hypotheses (bool): Whether to reduce observation hypotheses
@@ -909,7 +916,7 @@ def main(args):
         None: Prints performance metrics and saves results to files
     """
     # Step 1: Load the Theory of Mind evaluation dataset
-    data = DataLoader.load_full_dataset(args.dataset_name)
+    data = DataLoader.load_full_dataset(args.eval_name)
     
     # Step 2: Initialize tracking variables
     cnt = 0  # Running count of correct responses
@@ -919,17 +926,17 @@ def main(args):
     if args.automated:
         model_name = "automated"
     else:
-        model_name = utils.get_model_name(args.assigned_model)
-    print("model_name:", model_name)
+        model_name = utils.get_model_name(args.model_graph)
+    # print("model_name:", model_name)
     
     llm = args.llm_model
     hypo_method = "guided"
-    print(hypo_method)
+    # print(hypo_method)
 
     # Step 4: Handle HiToM dataset order specification
     order = 0
-    if "HiToM" in args.dataset_name:
-        order = int(args.dataset_name.split("order")[1])
+    if "HiToM" in args.eval_name:
+        order = int(args.eval_name.split("order")[1])
 
     # Step 5: Initialize result tracking
     correct_answer_probs = []
@@ -937,9 +944,9 @@ def main(args):
 
     # Step 6: Configure inference parameters
     back_inference = args.back_inference
-    print(f"Back inference is {back_inference}")
+    # print(f"Back inference is {back_inference}")
     reduce_hypotheses = args.reduce_hypotheses
-    print(f"Reduce observation hypotheses is {reduce_hypotheses}")
+    # print(f"Reduce observation hypotheses is {reduce_hypotheses}")
     
     # Step 7: Initialize cost and API tracking
     costs = []
@@ -948,19 +955,19 @@ def main(args):
     for i, d in enumerate(data):
         if i >= args.max_num:
             break
-        print(f"Question {i}")
+        # print(f"Question {i}")
         
         # Step 9: Parse dataset-specific format
         states, actions, video_id = None, None, None
-        if "MuMa" in args.dataset_name:
+        if "MuMa" in args.eval_name:
             story, question, choices, correct_answer, video_id = d
-        elif "MMToM" in args.dataset_name:
+        elif "MMToM" in args.eval_name:
             story, question, choices, correct_answer, states, actions = d
         else:
             story, question, choices, correct_answer = d
             
         # Step 10: Handle HiToM dataset choice filtering
-        if "HiToM" in args.dataset_name:
+        if "HiToM" in args.eval_name:
             # Filter choices to only include those mentioned in the story
             orig_choices = deepcopy(choices)
             choices = []
@@ -979,12 +986,12 @@ def main(args):
             question=question,
             choices=choices,
             K=args.K,
-            assigned_model=args.assigned_model,
+            model_graph=args.model_graph,
             model_name=model_name,
-            episode_name=f"{args.dataset_name}_{i}",
+            episode_name=f"{args.eval_name}_{i}",
             llm=llm,
             verbose=True,
-            dataset_name=args.dataset_name,
+            eval_name=args.eval_name,
             hypo_method=hypo_method,
             nested=args.nested,
             video_id=video_id,
@@ -1016,18 +1023,18 @@ def main(args):
         )
 
         # Step 15: Save estimation dictionary for reuse
-        ElementExtractor.save_estimation_dict(args.dataset_name, solver.estimation_dictionary)
+        ElementExtractor.save_estimation_dict(args.eval_name, solver.estimation_dictionary)
 
         # Step 16: Handle cases where model cannot answer
         if final_probs is None:
-            print("The assigned model cannot answer the question.")
+            # print("The assigned model cannot answer the question.")
             correct.append(0)
             utils.enh_print(f"Incorrect, now {cnt} / {i + 1}, {correct}", "red")
             continue
 
         # Step 17: Determine selected answer and correct answer index
         answer_idx = answerfunc(final_probs)
-        if "HiToM" in args.dataset_name:
+        if "HiToM" in args.eval_name:
             # Handle HiToM dataset answer mapping
             true_answer_word = orig_choices[correct_answer]
             correct_idx = -1
@@ -1041,7 +1048,7 @@ def main(args):
         # Step 18: Extract probability of correct answer
         correct_answer_prob = final_probs[correct_idx]
         correct_answer_probs.append(correct_answer_prob)
-        utils.enh_print(f"Likelihood of the correct answer: {correct_answer_prob:.2f}")
+        #  utils.enh_print(f"Likelihood of the correct answer: {correct_answer_prob:.2f}")
 
         # Step 19: Compile comprehensive metrics
         metrics = {
@@ -1086,8 +1093,8 @@ def main(args):
         model_counts = {}
         for record in model_records.values():
             print("Record:", record)
-            assigned_models = record["Assigned models"]
-            for model_list in assigned_models.values():
+            model_graphs = record["Assigned models"]
+            for model_list in model_graphs.values():
                 model_tuple = tuple(model_list)
                 model_counts[model_tuple] = model_counts.get(model_tuple, 0) + 1
 
@@ -1106,7 +1113,7 @@ if __name__ == "__main__":
     
     # Required arguments
     parser.add_argument(
-        "--dataset_name",
+        "--eval_name",
         required=True,
         choices=[
             "MMToM-QA", "ToMi-1st", "ToMi-2nd", "ToMi-memory", "ToMi-reality",
@@ -1132,7 +1139,7 @@ if __name__ == "__main__":
         help="Run in automated model discovery mode"
     )
     parser.add_argument(
-        "--assigned_model",
+        "--model_graph",
         type=str,
         default='["State", "Observation", "Belief", "Action", "Goal"]',
         help="Variables for manual mode Bayesian inference (when automated is false)"
@@ -1169,11 +1176,11 @@ if __name__ == "__main__":
     
     # Step 2: Parse arguments and run main function
     args = parser.parse_args()
-    args.assigned_model = ast.literal_eval(args.assigned_model)  # Convert string to list
+    args.model_graph = ast.literal_eval(args.model_graph)  # Convert string to list
     main(args)
 
     # example of command line run with AutoToM, back inference, reduced hypotheses:
-    # python ProbSolver.py --automated --dataset_name "MMToM-QA"
+    # python ProbSolver.py --automated --eval_name "MMToM-QA"
 
     # example of command line run with AutoToM with model specs:
-    # python ProbSolver.py --dataset_name ToMi-1st --assigned_model "['State', 'Observation', 'Belief']"
+    # python ProbSolver.py --eval_name ToMi-1st --model_graph "['State', 'Observation', 'Belief']"

@@ -1,5 +1,8 @@
-from utils import *
-from ElementExtractor import *
+import copy
+
+import utils
+import ElementExtractor as EE
+
 
 def load_parsed_result_into_self(self, parsed_result):
     needed_list = [
@@ -11,6 +14,7 @@ def load_parsed_result_into_self(self, parsed_result):
         if key in needed_list:
             setattr(self, key, value)
 
+
 def parse_story_and_question(self):
     """
     Extracts and processes information from the story, question and choices.
@@ -20,101 +24,107 @@ def parse_story_and_question(self):
         info: Dictionary containing the extracted and processed information,
                 or None if no model is assigned
     """
-    if self.assigned_model == None:
-        print("Model Not Assigned")
+    if self.model_graph is None:
+        print("There is no model graph defined")
         return None
-    
     # Extract info from question
-    new_info = get_info_from_question(self.question, self.llm, self.dataset_name)
-    if self.verbose:
-        (
-            enh_print(f"{self.tab}Info from question: {new_info}")
-            if new_info != ""
-            else enh_print(self.tab + "No new info from question")
-        )
-
-    if "MuMa" in self.dataset_name:
-        video_story = video_extracted_actions(self.video_id)
-        if "belief_of_goal" in self.dataset_name:
-            video_story = correct_visual_actions(video_story, self.choices, self.llm)
-        self.story = story_fusion(video_story, self.story, self.llm)
-    
-    if self.dataset_name in ["MuMaToM_belief", "MuMaToM_social_goal"]:
-        self.initial_state = get_initial_state(self.story, self.llm)
-        self.story = find_inference_timestep(self.story, self.choices, self.llm)
-        if new_info != "":
-            new_info = rewrite_belief_info(new_info, self.initial_state, self.llm)
-
-    self.story = get_rid_of_number_starts(self.story)
-    self.story += " " + new_info
-
-    if "HiToM" in self.dataset_name:
-        self.story = split_sentences(self.story, self.llm)
-
+    question_info = EE.get_info_from_question(
+        self.question, self.llm, self.eval_name)
+    # MuMA-specific handling for fusing video and text story
+    if "muma" in self.eval_name:
+        video_story = EE.video_extracted_actions(self.video_id)
+        if "belief_of_goal" in self.eval_name:
+            video_story = utils.correct_visual_actions(
+                video_story, self.choices, self.llm)
+        self.story = utils.story_fusion(video_story, self.story, self.llm)
+        if self.eval_name in ["mumatom-belief", "mumatom-social-goal"]:
+            self.initial_state = EE.get_initial_state(self.story, self.llm)
+            self.story = EE.find_inference_timestep(
+                self.story, self.choices, self.llm)
+            if question_info != "":
+                question_info = utils.rewrite_belief_info(
+                    question_info, self.initial_state, self.llm)
+    # Edit the story text to have no prefixes and contain the question info
+    self.story = utils.remove_story_prefixes(self.story)
+    self.story += " " + question_info
+    # HiToM-specific handling for story text
+    if "hitom" in self.eval_name:
+        self.story = utils.split_story_sentences(self.story, self.llm)
+    # HiToM-specific handling for nested reasoning
     if self.nested:
-        self.orig_story = deepcopy(self.story)
-        self.orig_choices = rephrase_choices(self.question, self.orig_choices, self.hypo_llm)
-        self.nested_agents_list = find_nested_agent_list(self.question, self.choices, self.hypo_llm)
+        self.orig_story = copy.deepcopy(self.story)
+        self.orig_choices = utils.rephrase_choices(
+            self.question, self.orig_choices, self.hypo_llm)
+        self.nested_agents_list = EE.find_nested_agent_list(
+            self.question, self.choices, self.hypo_llm)
         self.first_agent_name = self.nested_agents_list[0]
-        self.story, vis = reconstruct_story_nested(
-            self.orig_story, self.first_agent_name, self.llm, self.dataset_name
+        self.story, vis = utils.reconstruct_story_nested(
+            self.orig_story, self.first_agent_name, self.llm, self.eval_name
         )
         self.story = " ".join(self.story)
-        save_reconstructed_story(vis, self.model_name, self.episode_name, self.first_agent_name)
-        
-        if self.verbose:
-            print("New story:", self.story)
-
-        self.question = rephrase_question_nested(
-            self.question, self.nested_agents_list[-1], self.llm, self.dataset_name
+        EE.save_reconstructed_story(
+            vis, self.model_name, self.episode_name, self.first_agent_name)
+        self.question = utils.rephrase_question_nested(
+            self.question,
+            self.nested_agents_list[-1],
+            self.llm,
+            self.eval_name
         )
-        if self.verbose:
-            print("New question:", self.question)
-
-    self.choices = rephrase_choices(self.question, self.choices, self.hypo_llm)
-    if self.verbose:
-        print(self.tab + f"{self.choices}")
-
+    # Rephrase the choices into full sentences for LMs
+    self.choices = utils.rephrase_choices(
+        self.question, self.choices, self.hypo_llm)
+    # Determine the variable to infer for the given question
+    # If we're inferring the model grah (automated mode), infer the variable
     if self.model_name == "automated":
         possible_vars = ["Belief", "Goal"]
-        if "BigToM" in self.dataset_name:
+        # Eval-specific possible variables (eval-specific variable priors)
+        # NOTE: We might want to remove these priors later for P(r|V,X)
+        if "bigtom" in self.eval_name:
             possible_vars.append("Action")
-        if "ToMi" in self.dataset_name or "HiToM" in self.dataset_name:
+        if "tomi" in self.eval_name or "hitom" in self.eval_name:
             possible_vars = ["Belief"]
-        self.inf_var_name = get_inf_var(
+        self.inf_var_name = EE.get_inf_var(
             self.question,
             self.choices,
             possible_vars,
             self.hypo_llm,
-            self.dataset_name,
+            self.eval_name,
         )
-        print("inf_var_name", self.inf_var_name)
+    # Otherwise, grab the variable from the model graph
     else:
-        self.inf_var_name = get_inf_var(
+        self.inf_var_name = EE.get_inf_var(
             self.question,
             self.choices,
-            self.assigned_model,
+            self.model_graph,
             self.hypo_llm,
-            self.dataset_name,
+            self.eval_name,
         )
-
-    if self.nested == True:
+    # Find the agent to infer the variable for
+    # If nested, it's the last dude in the chain of dudes
+    if self.nested:
         self.inf_agent_name = self.nested_agents_list[-1]
+    # Otherwise, infer the agent that the question is about
     else:
-        self.inf_agent_name = find_inferred_agent(
+        self.inf_agent_name = utils.find_inferred_agent(
             self.question, self.choices, self.hypo_llm
         )
-
-    if self.verbose:
-        enh_print(self.tab + f"Inferring: {self.inf_agent_name}'s {self.inf_var_name}", "green")
-
-    needed_list = [
-        "story", "question", "choices", "inf_agent_name", "first_agent_name",
-        "inf_var_name", "orig_choices", "orig_story", "initial_state", "nested_agents_list",
+    # Make sure that we have all the necessary info to solve the problem
+    necessary_info_kinds = [
+        "story",
+        "question",
+        "choices",
+        "inf_agent_name",
+        "first_agent_name",
+        "inf_var_name",
+        "orig_choices",
+        "orig_story",
+        "initial_state",
+        "nested_agents_list",
         "full"
     ]
-    info = {k: v for k, v in self.__dict__.items() if k in needed_list}
-    save_parsed_result(info, self.model_name, self.episode_name)
-    
+    # Aggregate the necessary info into a dictionary to be used for inference
+    info = {k:v for k,v in self.__dict__.items() if k in necessary_info_kinds}
+    # Save the necessary info to a file
+    EE.save_parsed_result(info, self.model_name, self.episode_name)
     return info
 

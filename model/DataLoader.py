@@ -1,18 +1,20 @@
 import csv
 import random
+import pandas as pd
 
 
 def load_full_dataset(dataset_name):
     random.seed(42)
+    dataset_name = dataset_name.lower()
 
-    if "HiToM_len1" in dataset_name:
+    if "hitom-len1" in dataset_name:
         order = dataset_name.split('order')[1]
         tell = dataset_name.split('tell')[1][0]
         if tell == "1":
             tell = "tell"
         else:
             tell = "no_tell"
-        with open(f"../benchmarks/full_data_formatted/HiToM_len1_{tell}_{order}.csv", "r") as f:
+        with open(f"../benchmarks/full_data_formatted/hitom-len1_{tell}_{order}.csv", "r") as f:
             reader = csv.reader(f, delimiter=",")
             rows = list(reader)
         data = []
@@ -32,7 +34,7 @@ def load_full_dataset(dataset_name):
             data.append((story, question, choices, answer))
         return data
 
-    if dataset_name == "MuMaToM_belief":
+    if dataset_name == "mumatom-belief":
         with open("../benchmarks/full_data_formatted/MuMA_belief.csv", "r") as f:
             reader = csv.reader(f, delimiter=",")
             rows = list(reader)
@@ -52,7 +54,7 @@ def load_full_dataset(dataset_name):
             data.append((story, question, new_choices, answer, id))
         return data
 
-    elif dataset_name == "MuMaToM_social_goal":
+    elif dataset_name == "mumatom-social-goal":
         with open("../benchmarks/full_data_formatted/MuMA_social_goal.csv", "r") as f:
             reader = csv.reader(f, delimiter=",")
             rows = list(reader)
@@ -72,7 +74,7 @@ def load_full_dataset(dataset_name):
         # print(data)
         return data
 
-    elif dataset_name == "MuMaToM_belief_of_goal":
+    elif dataset_name == "mumatom-belief_of_goal":
         with open(
             "../benchmarks/full_data_formatted/MuMA_belief_of_goal.csv", "r"
         ) as f:
@@ -94,8 +96,8 @@ def load_full_dataset(dataset_name):
         # print(data)
         return data
 
-    if dataset_name == "MMToM-QA":
-        with open("../benchmarks/full_data_formatted/MMToM-QA.csv", "r") as f:
+    if dataset_name == "mmtom-qa":
+        with open("../benchmarks/full_data_formatted/mmtom-qa.csv", "r") as f:
             reader = csv.reader(f, delimiter=",")
             rows = list(reader)
         data = []
@@ -114,7 +116,7 @@ def load_full_dataset(dataset_name):
             data.append((story, question, choices, answer, states, actions))
         return data
 
-    if dataset_name == "ToMi-1st":
+    if dataset_name == "tomi-first":
         with open("../benchmarks/full_data_formatted/tomi_first_order.csv", "r") as f:
             reader = csv.reader(f, delimiter=",")
             rows = list(reader)
@@ -134,8 +136,10 @@ def load_full_dataset(dataset_name):
                 answer = "B"
                 
             data.append((story, question, choices, answer))
-        return data
-    if dataset_name == "ToMi-2nd":
+        return pd.DataFrame(
+            data, columns=['story', 'question', 'answer_choices', 'gt_answer'])
+    
+    if dataset_name == "tomi-second":
         with open("../benchmarks/full_data_formatted/tomi_second_order.csv", "r") as f:
             reader = csv.reader(f, delimiter=",")
             rows = list(reader)
@@ -155,9 +159,10 @@ def load_full_dataset(dataset_name):
                 answer = "B"
                 
             data.append((story, question, choices, answer))
-        return data
+        return pd.DataFrame(
+            data, columns=['story', 'question', 'answer_choices', 'gt_answer'])
     
-    if dataset_name == "ToMi-memory":
+    if dataset_name == "tomi-memory":
         with open("../benchmarks/full_data_formatted/tomi_memory.csv", "r") as f:
             reader = csv.reader(f, delimiter=",")
             rows = list(reader)
@@ -177,9 +182,10 @@ def load_full_dataset(dataset_name):
                 answer = "B"
                 
             data.append((story, question, choices, answer))
-        return data
+        return pd.DataFrame(
+            data, columns=['story', 'question', 'answer_choices', 'gt_answer'])
     
-    if dataset_name == "ToMi-reality":
+    if dataset_name == "tomi-reality":
         with open("../benchmarks/full_data_formatted/tomi_reality.csv", "r") as f:
             reader = csv.reader(f, delimiter=",")
             rows = list(reader)
@@ -199,61 +205,62 @@ def load_full_dataset(dataset_name):
                 answer = "B"
                 
             data.append((story, question, choices, answer))
-        return data
+        return pd.DataFrame(
+            data, columns=['story', 'question', 'answer_choices', 'gt_answer'])
 
-    elif "FANToM" in dataset_name:
-        if dataset_name == "FANToM-1st_TB_short":
+    elif "fantom" in dataset_name:
+        if dataset_name == "fantom-first-tb-short":
             with open(
-                "../benchmarks/full_data_formatted/FANToM_tom:belief:accessible_short_context_first-order.csv",
+                "../benchmarks/full_data_formatted/fantom_tom:belief:accessible_short_context_first-order.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "FANToM-1st_TB_full":
+        elif dataset_name == "fantom-first-tb-full":
             with open(
-                "../benchmarks/full_data_formatted/FANToM_tom:belief:accessible_full_context_first-order.csv",
+                "../benchmarks/full_data_formatted/fantom_tom:belief:accessible_full_context_first-order.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "FANToM-1st_FB_short":
+        elif dataset_name == "fantom-first-fb-short":
             with open(
-                "../benchmarks/full_data_formatted/FANToM_tom:belief:inaccessible_short_context_first-order.csv",
+                "../benchmarks/full_data_formatted/fantom_tom:belief:inaccessible_short_context_first-order.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "FANToM-1st_FB_full":
+        elif dataset_name == "fantom-first-fb-full":
             with open(
-                "../benchmarks/full_data_formatted/FANToM_tom:belief:inaccessible_full_context_first-order.csv",
+                "../benchmarks/full_data_formatted/fantom_tom:belief:inaccessible_full_context_first-order.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "FANToM-2nd_TB_short":
+        elif dataset_name == "fantom-second-tb-short":
             with open(
-                "../benchmarks/full_data_formatted/FANToM_tom:belief:accessible_short_context_second-order.csv",
+                "../benchmarks/full_data_formatted/fantom_tom:belief:accessible_short_context_second-order.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "FANToM-2nd_TB_full":
+        elif dataset_name == "fantom-second-tb-full":
             with open(
-                "../benchmarks/full_data_formatted/FANToM_tom:belief:accessible_full_context_second-order.csv",
+                "../benchmarks/full_data_formatted/fantom_tom:belief:accessible_full_context_second-order.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "FANToM-2nd_FB_short":
+        elif dataset_name == "fantom-second-fb-short":
             with open(
-                "../benchmarks/full_data_formatted/FANToM_tom:belief:inaccessible_short_context_second-order.csv",
+                "../benchmarks/full_data_formatted/fantom_tom:belief:inaccessible_short_context_second-order.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "FANToM-2nd_FB_full":
+        elif dataset_name == "fantom-second-fb-full":
             with open(
-                "../benchmarks/full_data_formatted/FANToM_tom:belief:inaccessible_full_context_second-order.csv",
+                "../benchmarks/full_data_formatted/fantom_tom:belief:inaccessible_full_context_second-order.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
@@ -275,52 +282,52 @@ def load_full_dataset(dataset_name):
             data.append((story, question, choices, answer))
         return data
 
-    elif "BigToM" in dataset_name:
-        if dataset_name == "BigToM_fbfb":
+    elif "bigtom" in dataset_name:
+        if dataset_name == "bigtom-fbfb":
             with open(
-                "../benchmarks/full_data_formatted/BigToM_forward_belief_false_belief_stories.csv",
+                "../benchmarks/full_data_formatted/bigtom_forward_belief_false_belief_stories.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "BigToM_bbfb":
+        elif dataset_name == "bigtom-bbfb":
             with open(
-                "../benchmarks/full_data_formatted/BigToM_backward_belief_false_belief_stories.csv",
+                "../benchmarks/full_data_formatted/bigtom_backward_belief_false_belief_stories.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "BigToM_bbtb":
+        elif dataset_name == "bigtom_bbtb":
             with open(
-                "../benchmarks/full_data_formatted/bigToM_backward_belief_true_belief_stories.csv",
+                "../benchmarks/full_data_formatted/bigtom_backward_belief_true_belief_stories.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "BigToM_fafb":
+        elif dataset_name == "bigtom_fafb":
             with open(
-                "../benchmarks/full_data_formatted/bigToM_forward_action_false_belief_stories.csv",
+                "../benchmarks/full_data_formatted/bigtom_forward_action_false_belief_stories.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "BigToM_fatb":
+        elif dataset_name == "bigtom_fatb":
             with open(
-                "../benchmarks/full_data_formatted/bigToM_forward_action_true_belief_stories.csv",
+                "../benchmarks/full_data_formatted/bigtom_forward_action_true_belief_stories.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "BigToM_fbfb":
+        elif dataset_name == "bigtom-fbfb":
             with open(
-                "../benchmarks/full_data_formatted/bigToM_forward_belief_false_belief_stories.csv",
+                "../benchmarks/full_data_formatted/bigtom_forward_belief_false_belief_stories.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "BigToM_fbtb":
+        elif dataset_name == "bigtom_fbtb":
             with open(
-                "../benchmarks/full_data_formatted/bigToM_forward_belief_true_belief_stories.csv",
+                "../benchmarks/full_data_formatted/bigtom_forward_belief_true_belief_stories.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
@@ -330,7 +337,7 @@ def load_full_dataset(dataset_name):
         for row in rows[1:]:
             story, question = row[0], row[1]
             true_answer, choices = row[3], row[2]
-            if dataset_name == "BigToM":
+            if dataset_name == "bigtom":
                 choices = choices.replace("[", "").replace("]", "").split(",")
             else:
                 choices = choices.replace("[", "").replace("]", "").split(";")
@@ -353,50 +360,51 @@ def load_full_dataset(dataset_name):
 
 
 def load_dataset(dataset_name):
+    dataset_name = dataset_name.lower()
     random.seed(42)
-    if "BigToM" in dataset_name:
-        if dataset_name == "BigToM":
-            with open("../benchmarks/mini-data/bigToM.csv", "r") as f:
+    if "bigtom" in dataset_name:
+        if dataset_name == "bigtom":
+            with open("../benchmarks/mini-data/bigtom.csv", "r") as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "BigToM_bbfb":
+        elif dataset_name == "bigtom-bbfb":
             with open(
-                "../benchmarks/mini-data/bigToM_backward_belief_false_belief_stories.csv",
+                "../benchmarks/mini-data/bigtom_backward_belief_false_belief_stories.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "BigToM_bbtb":
+        elif dataset_name == "bigtom_bbtb":
             with open(
-                "../benchmarks/mini-data/bigToM_backward_belief_true_belief_stories.csv",
+                "../benchmarks/mini-data/bigtom_backward_belief_true_belief_stories.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "BigToM_fafb":
+        elif dataset_name == "bigtom_fafb":
             with open(
-                "../benchmarks/mini-data/bigToM_forward_action_false_belief_stories.csv",
+                "../benchmarks/mini-data/bigtom_forward_action_false_belief_stories.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "BigToM_fatb":
+        elif dataset_name == "bigtom_fatb":
             with open(
-                "../benchmarks/mini-data/bigToM_forward_action_true_belief_stories.csv",
+                "../benchmarks/mini-data/bigtom_forward_action_true_belief_stories.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "BigToM_fbfb":
+        elif dataset_name == "bigtom-fbfb":
             with open(
-                "../benchmarks/mini-data/bigToM_forward_belief_false_belief_stories.csv",
+                "../benchmarks/mini-data/bigtom_forward_belief_false_belief_stories.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
                 rows = list(reader)
-        elif dataset_name == "BigToM_fbtb":
+        elif dataset_name == "bigtom_fbtb":
             with open(
-                "../benchmarks/mini-data/bigToM_forward_belief_true_belief_stories.csv",
+                "../benchmarks/mini-data/bigtom_forward_belief_true_belief_stories.csv",
                 "r",
             ) as f:
                 reader = csv.reader(f, delimiter=",")
@@ -405,7 +413,7 @@ def load_dataset(dataset_name):
         for row in rows[1:]:
             story, question = row[0], row[1]
             true_answer, choices = row[2], row[3]
-            if dataset_name == "BigToM":
+            if dataset_name == "bigtom":
                 choices = choices.replace("[", "").replace("]", "").split(",")
             else:
                 choices = choices.replace("[", "").replace("]", "").split(";")
@@ -427,8 +435,8 @@ def load_dataset(dataset_name):
             data.append((story, question, choices, answer))
         return data
 
-    if dataset_name == "ToMi-1st":
-        with open("../benchmarks/mini-data/tomi_1st_order.csv", "r") as f:
+    if dataset_name == "tomi-first":
+        with open("../benchmarks/mini-data/tomi_first_order.csv", "r") as f:
             reader = csv.reader(f, delimiter=",")
             rows = list(reader)
         data = []
@@ -449,8 +457,8 @@ def load_dataset(dataset_name):
             data.append((story, question, choices, answer))
         return data
 
-    if dataset_name == "FANToM-1st":
-        with open("../benchmarks/mini-data/FANToM_1st.csv", "r") as f:
+    if dataset_name == "fantom-first":
+        with open("../benchmarks/mini-data/fantom_first.csv", "r") as f:
             reader = csv.reader(f, delimiter=",")
             rows = list(reader)
         data = []
@@ -470,7 +478,7 @@ def load_dataset(dataset_name):
             data.append((story, question, choices, answer))
         return data
 
-    if dataset_name == "MuMaToM_belief":
+    if dataset_name == "mumatom-belief":
         with open("../benchmarks/mini-data/MuMa_belief.csv", "r") as f:
             reader = csv.reader(f, delimiter=",")
             rows = list(reader)
@@ -490,7 +498,7 @@ def load_dataset(dataset_name):
             data.append((story, question, new_choices, answer, id))
         return data
 
-    elif dataset_name == "MuMaToM_social_goal":
+    elif dataset_name == "mumatom-social-goal":
         with open("../benchmarks/mini-data/MuMa_social_goal.csv", "r") as f:
             reader = csv.reader(f, delimiter=",")
             rows = list(reader)
@@ -510,7 +518,7 @@ def load_dataset(dataset_name):
             
         return data
 
-    elif dataset_name == "MuMaToM_belief_of_goal":
+    elif dataset_name == "mumatom-belief-of-goal":
         with open("../benchmarks/mini-data/MuMa_belief_of_goal.csv", "r") as f:
             reader = csv.reader(f, delimiter=",")
             rows = list(reader)
@@ -530,8 +538,8 @@ def load_dataset(dataset_name):
             
         return data
 
-    if dataset_name == "ToMi-2nd":
-        with open("../benchmarks/mini-data/tomi_2nd_order.csv", "r") as f:
+    if dataset_name == "tomi-second":
+        with open("../benchmarks/mini-data/tomi_second_order.csv", "r") as f:
             reader = csv.reader(f, delimiter=",")
             rows = list(reader)
         data = []
@@ -552,8 +560,8 @@ def load_dataset(dataset_name):
             data.append((story, question, choices, answer))
         return data
 
-    if dataset_name == "MMToM-QA":
-        with open("../benchmarks/mini-data/MMToM-QA.csv", "r") as f:
+    if dataset_name == "mmtom-qa":
+        with open("../benchmarks/mini-data/mmtom-qa.csv", "r") as f:
             reader = csv.reader(f, delimiter=",")
             rows = list(reader)
         data = []
