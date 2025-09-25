@@ -1,0 +1,14 @@
+Propose [num] hypotheses for the response that an external agent (LLM or human) would give when asked about [Character]'s behavior, aligned with the context of: [Context]
+Given information: [Information]
+
+The response refers to what an external observer would answer when asked a question about the character's behavior, based on their understanding of the character's mental state and the observable events in the story.
+
+The hypotheses do not require reasoning or consideration of whether they are likely to occur. The only limitation is that they must be relevant to the information already provided and represent plausible responses an external agent might give.
+
+The response should be one of the possible answer choices to the question being asked about the character.
+
+Do not state any reason for the hypotheses. Do not contain any form of explanation in the hypotheses.
+Output a list of hypotheses of length [num] in following form: ["aaa.", "bbb.", ...] 
+
+[Context]
+Response Hypotheses:
