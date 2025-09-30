@@ -128,15 +128,11 @@ def main(args):
     # Evaluation metrics
     eval_metrics = []
     # Iterate through the eval data (each row is a question Q)
-    for index, row in tqdm(
-        list(eval_data.iterrows())[:50], desc="Evaluating"):
+    for index, row in tqdm(eval_data.iterrows(), desc="Evaluating"):
         story = row['story']
         question = row['question']
         answer_choices = row['answer_choices']
         gt_answer = row['gt_answer']
-        cprint(f"Story: {story}", "green")
-        cprint(f"Question: {question}", "red")
-        cprint(f"choices: {answer_choices}", "blue")
         answerfunc = argmin if "LEAST likely" in question else argmax
         # Compute P(R | X) = f(X) from LMs
         lm_response_posterior = get_logits(
@@ -144,7 +140,6 @@ def main(args):
         # lm_response_posterior = [0.9, 0.1]
         # NOTE: Remove this after testing
         # lm_response_posterior = [0.9, 0.1]
-        cprint(f"LM response posterior: {lm_response_posterior}", "yellow")
         lm_answer_idx = answerfunc(lm_response_posterior)
         correct_idx = letter_to_number_mapping(gt_answer)
         questions_correct.append(int(lm_answer_idx == correct_idx))
@@ -193,7 +188,6 @@ def main(args):
             observed_response_probs=lm_response_posterior
         )
         response_posterior, v_map = p_v_x.solve()
-        cprint(f"AutoTom response posterior: {response_posterior}", "yellow")
         vs_map_estimates.append({
             "question_index": index,
             "v_map": v_map,
@@ -218,14 +212,14 @@ def main(args):
     vs_map_estimates = pd.DataFrame(vs_map_estimates)
     if args.fit_to_responses:
         eval_metrics.to_csv(
-            f"{DATA_PATH}/eval_metrics_{args.eval_name}_fit_to_responses.csv", index=False)
+            f"{DATA_PATH}/eval_metrics_{args.eval_name}_{args.llm}_fit_to_responses.csv", index=False)
         vs_map_estimates.to_csv(
-            f"{DATA_PATH}/vs_map_estimates_{args.eval_name}_fit_to_responses.csv", index=False)
+            f"{DATA_PATH}/vs_map_estimates_{args.eval_name}_{args.llm}_fit_to_responses.csv", index=False)
     else:
         eval_metrics.to_csv(
-            f"{DATA_PATH}/eval_metrics_{args.eval_name}.csv", index=False)
+            f"{DATA_PATH}/eval_metrics_{args.eval_name}_{args.llm}.csv", index=False)
         vs_map_estimates.to_csv(
-            f"{DATA_PATH}/vs_map_estimates_{args.eval_name}.csv", index=False)
+            f"{DATA_PATH}/vs_map_estimates_{args.eval_name}_{args.llm}.csv", index=False)
 
 
 if __name__ == "__main__":
