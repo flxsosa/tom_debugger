@@ -770,7 +770,7 @@ class ProblemSolver:
 
         # Step 4: Handle memory questions with direct LLM query
         if self.memory is True:
-            return utils.get_answer_memory_questions(
+            return ElementExtractor.get_answer_memory_questions(
                 self.story, self.question, self.choices, self.llm
             )
         # Step 5: Extract temporal mental state variables
@@ -783,7 +783,7 @@ class ProblemSolver:
         
         # Step 6: Handle realistic questions with direct state lookup
         if self.realistic:
-            return utils.get_answer_from_state(
+            return ElementExtractor.get_answer_from_state(
                 time_variables[-1]["State"].possible_values[0], self.choices, self.llm
             )
             
