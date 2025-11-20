@@ -30,9 +30,13 @@ import argparse
 from copy import deepcopy
 import time
 import ast
+import os
 
 from scipy.stats import entropy
 import numpy as np
+
+import dotenv
+dotenv.load_dotenv()
 
 import model_adjustment
 import Timeline

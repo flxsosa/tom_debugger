@@ -7,27 +7,44 @@ AutoToM is an automated agent modeling method for scalable, robust, and interpre
 
 ## Example Usage
 
+**Note:** The script must be run from the `model/` directory because it uses relative paths to access data files.
+
 *To run AutoToM on MMToM-QA, with the default settings of reduced hypotheses and backwards inference*: 
 
-    python ProbSolver.py --automated --dataset_name "MMToM-QA"
+    cd model
+    uv run python ProbSolver.py --automated --eval_name "MMToM-QA"
 
 *To run AutoToM on ToMi-1st with a specified model input*: 
 
-    python ProbSolver.py --dataset_name "ToMi-1st" --assigned_model "['State', 'Observation', 'Belief']"
+    cd model
+    uv run python ProbSolver.py --eval_name "ToMi-1st" --model_graph "['State', 'Observation', 'Belief']"
+
+If you have activated the virtual environment, you can use `python` directly instead of `uv run`:
+    
+    cd model
+    python ProbSolver.py --automated --eval_name "MMToM-QA"
 
 ## Requirements
 
 - Install relevant packages:
-    - run
+    - This project uses `uv` for dependency management. Install dependencies with:
     ``
-        pip install -r requirements.txt
+        uv sync
     ``
+    - This will create a virtual environment (`.venv`) and install all required packages from `uv.lock`.
+    - To activate the virtual environment manually:
+    ``
+        source .venv/bin/activate
+    ``
+    - Or use `uv run` to execute commands within the environment automatically.
 - Set your `OPENAI_API_KEY`:
-
-    - On macOS and Linux:
-    `export OPENAI_API_KEY='your-api-key'`
     
-    - On Windows: `set OPENAI_API_KEY='your-api-key'`
+    Create a `.env` file in the root directory of the project and add your API key:
+    ``
+        OPENAI_API_KEY=your-api-key-here
+    ``
+    
+    **Note:** The `.env` file is already included in `.gitignore`, so your API key will not be committed to version control.
 
 ## Testing AutoToM with customized questions
 
